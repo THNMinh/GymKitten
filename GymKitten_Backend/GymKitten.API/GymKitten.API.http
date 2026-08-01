@@ -1,0 +1,6 @@
+@GymKitten.API_HostAddress = http://localhost:5084
+
+GET {{GymKitten.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
