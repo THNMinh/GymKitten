@@ -60,6 +60,17 @@ public static class DependencyInjection
         services.AddScoped<IJwtProvider, JwtProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
 
+        // OTP & Email services (stub implementations)
+        services.AddSingleton<IOtpGenerator, OtpGenerator>();
+        services.AddSingleton<IRedisOtpStore, InMemoryOtpStore>();
+        services.AddSingleton<IEmailJobService, StubEmailJobService>();
+
+        // Register MediatR notification handlers from Infrastructure assembly
+        services.AddMediatR(config =>
+        {
+            config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+        });
+
         return services;
     }
 }

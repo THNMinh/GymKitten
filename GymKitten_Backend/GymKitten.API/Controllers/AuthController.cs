@@ -1,5 +1,6 @@
 using GymKitten.Application.Features.Auth.Login;
 using GymKitten.Application.Features.Auth.RefreshToken;
+using GymKitten.Application.Features.Auth.Register;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,31 @@ public class AuthController : ControllerBase
     public AuthController(ISender sender)
     {
         _sender = sender;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterCustomerCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Registration Failed",
+                Detail = result.Error.Message,
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+                Extensions = { { "code", result.Error.Code } }
+            });
+        }
+
+        return CreatedAtAction(
+            actionName: null,
+            routeValues: null,
+            value: result.Value);
     }
 
     [HttpPost("login")]
