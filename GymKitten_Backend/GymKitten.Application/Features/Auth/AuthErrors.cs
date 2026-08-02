@@ -19,4 +19,8 @@ public static class AuthErrors
     public static readonly Error AccountInactive = new(
         "Auth.AccountInactive",
         "This account has been deactivated.");
+
+    public static readonly Error EmailAlreadyExists = new(
+        "Auth.EmailAlreadyExists",
+        "An account with this email address already exists.");
 }

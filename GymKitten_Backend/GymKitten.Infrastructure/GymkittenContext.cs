@@ -2,19 +2,24 @@ using System;
 using System.Collections.Generic;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Domain.Entities;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymKitten.Infrastructure;
 
 public partial class GymkittenContext : DbContext, IApplicationDbContext, IUnitOfWork
 {
+    private readonly IPublisher _publisher;
+
     public GymkittenContext()
     {
+        _publisher = null!;
     }
 
-    public GymkittenContext(DbContextOptions<GymkittenContext> options)
+    public GymkittenContext(DbContextOptions<GymkittenContext> options, IPublisher publisher)
         : base(options)
     {
+        _publisher = publisher;
     }
 
     public virtual DbSet<Cart> Carts { get; set; }
@@ -989,4 +994,32 @@ public partial class GymkittenContext : DbContext, IApplicationDbContext, IUnitO
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        // Collect domain events from all tracked User entities
+        var usersWithEvents = ChangeTracker
+            .Entries<User>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => e.Entity)
+            .ToList();
+
+        var domainEvents = usersWithEvents
+            .SelectMany(u => u.DomainEvents)
+            .ToList();
+
+        // Clear domain events before publishing to avoid re-entrancy
+        foreach (var user in usersWithEvents)
+        {
+            user.ClearDomainEvents();
+        }
+
+        // Publish domain events via MediatR
+        foreach (var domainEvent in domainEvents)
+        {
+            await _publisher.Publish(domainEvent, cancellationToken);
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 }
