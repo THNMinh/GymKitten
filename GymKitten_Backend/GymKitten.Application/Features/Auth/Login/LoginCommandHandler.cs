@@ -1,27 +1,31 @@
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
+using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+using GymKitten.Domain.Errors;
 
 namespace GymKitten.Application.Features.Auth.Login;
 
 public sealed class LoginCommandHandler
     : ICommandHandler<LoginCommand, Result<LoginResponse>>
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtProvider _jwtProvider;
     private readonly IPasswordHasher _passwordHasher;
 
     public LoginCommandHandler(
-        IApplicationDbContext dbContext,
+        IUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
         IUnitOfWork unitOfWork,
         IJwtProvider jwtProvider,
         IPasswordHasher passwordHasher)
     {
-        _dbContext = dbContext;
+        _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
         _unitOfWork = unitOfWork;
         _jwtProvider = jwtProvider;
         _passwordHasher = passwordHasher;
@@ -32,8 +36,7 @@ public sealed class LoginCommandHandler
         CancellationToken cancellationToken)
     {
         // 1. Find user by email
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
         if (user is null)
         {
@@ -59,7 +62,7 @@ public sealed class LoginCommandHandler
         // 5. Generate refresh token string
         var refreshTokenString = _jwtProvider.GenerateRefreshToken();
 
-        // 6. Save refresh token to DB
+        // 6. Save refresh token to DB via Repository
         var refreshToken = new Refreshtoken
         {
             Refreshtokenid = Guid.NewGuid(),
@@ -73,7 +76,7 @@ public sealed class LoginCommandHandler
             Updatedat = DateTime.UtcNow
         };
 
-        _dbContext.Refreshtokens.Add(refreshToken);
+        await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // 7. Return response

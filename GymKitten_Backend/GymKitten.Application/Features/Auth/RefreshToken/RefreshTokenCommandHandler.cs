@@ -1,26 +1,27 @@
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
+using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Application.Features.Auth.Login;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+using GymKitten.Domain.Errors;
 
 namespace GymKitten.Application.Features.Auth.RefreshToken;
 
 public sealed class RefreshTokenCommandHandler
     : ICommandHandler<RefreshTokenCommand, Result<LoginResponse>>
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtProvider _jwtProvider;
 
     public RefreshTokenCommandHandler(
-        IApplicationDbContext dbContext,
+        IRefreshTokenRepository refreshTokenRepository,
         IUnitOfWork unitOfWork,
         IJwtProvider jwtProvider)
     {
-        _dbContext = dbContext;
+        _refreshTokenRepository = refreshTokenRepository;
         _unitOfWork = unitOfWork;
         _jwtProvider = jwtProvider;
     }
@@ -29,10 +30,8 @@ public sealed class RefreshTokenCommandHandler
         RefreshTokenCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Find the refresh token in DB
-        var storedToken = await _dbContext.Refreshtokens
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken, cancellationToken);
+        // 1. Find the refresh token in DB via Repository
+        var storedToken = await _refreshTokenRepository.GetByTokenWithUserAsync(request.RefreshToken, cancellationToken);
 
         if (storedToken is null)
         {
@@ -81,7 +80,7 @@ public sealed class RefreshTokenCommandHandler
         };
 
         // 8. Save to DB
-        _dbContext.Refreshtokens.Add(newRefreshToken);
+        await _refreshTokenRepository.AddAsync(newRefreshToken, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // 9. Return new tokens
