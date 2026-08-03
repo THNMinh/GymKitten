@@ -1,6 +1,6 @@
 using GymKitten.Domain.Common;
 
-namespace GymKitten.Application.Features.Auth;
+namespace GymKitten.Domain.Errors;
 
 public static class AuthErrors
 {

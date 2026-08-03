@@ -1,30 +1,31 @@
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
+using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
+using GymKitten.Domain.Errors;
 using GymKitten.Domain.Events;
-using Microsoft.EntityFrameworkCore;
 
 namespace GymKitten.Application.Features.Auth.Register;
 
 public sealed class RegisterCustomerCommandHandler
     : ICommandHandler<RegisterCustomerCommand, Result<RegisterCustomerResponse>>
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpGenerator _otpGenerator;
     private readonly IRedisOtpStore _otpStore;
 
     public RegisterCustomerCommandHandler(
-        IApplicationDbContext dbContext,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IOtpGenerator otpGenerator,
         IRedisOtpStore otpStore)
     {
-        _dbContext = dbContext;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _otpGenerator = otpGenerator;
@@ -35,9 +36,8 @@ public sealed class RegisterCustomerCommandHandler
         RegisterCustomerCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Check if email already exists
-        var emailExists = await _dbContext.Users
-            .AnyAsync(u => u.Email == request.Email, cancellationToken);
+        // 1. Check if email already exists via Repository
+        var emailExists = await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken);
 
         if (emailExists)
         {
@@ -59,7 +59,7 @@ public sealed class RegisterCustomerCommandHandler
             Updatedat = now
         };
 
-        _dbContext.Users.Add(user);
+        await _userRepository.AddAsync(user, cancellationToken);
 
         // 3. Generate OTP and store it
         var otpCode = _otpGenerator.Generate6Digits();
