@@ -8,6 +8,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("frontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:8080",
+                "http://localhost:8081",
+                "http://localhost:8082",
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:3000",
+                "https://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 // Swagger with Bearer Auth
 builder.Services.AddSwaggerGen(options =>
@@ -64,7 +81,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
-app.UseHttpsRedirection();
+app.UseCors("frontend");
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

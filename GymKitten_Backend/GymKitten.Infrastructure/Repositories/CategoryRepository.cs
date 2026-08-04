@@ -19,12 +19,40 @@ public sealed class CategoryRepository : ICategoryRepository
             .FirstOrDefaultAsync(c => c.Categoryid == categoryId, cancellationToken);
     }
 
-    public async Task<List<Category>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<(IEnumerable<Category> Categories, int Total)> SearchCategoriesAsync(
+        string? searchName,
+        Guid? parentCategoryId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Categories
+        var query = _context.Categories
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchName))
+        {
+            var term = searchName.Trim().ToLower();
+            query = query.Where(c => c.Name.ToLower().Contains(term));
+        }
+
+        if (parentCategoryId.HasValue && parentCategoryId.Value != Guid.Empty)
+        {
+            query = query.Where(c => c.Parentcategoryid == parentCategoryId.Value);
+        }
+
+        // Count First
+        var total = await query.CountAsync(cancellationToken);
+
+        // Take Later
+        var categories = await query
             .OrderBy(c => c.Displayorder)
             .ThenBy(c => c.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
+
+        return (categories, total);
     }
 
     public async Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken = default)

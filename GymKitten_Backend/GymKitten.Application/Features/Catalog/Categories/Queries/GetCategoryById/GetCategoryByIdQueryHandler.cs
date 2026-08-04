@@ -7,7 +7,7 @@ using GymKitten.Domain.Errors;
 namespace GymKitten.Application.Features.Catalog.Categories.Queries.GetCategoryById;
 
 public sealed class GetCategoryByIdQueryHandler
-    : IQueryHandler<GetCategoryByIdQuery, Result<CategoryDto>>
+    : IQueryHandler<GetCategoryByIdQuery, Result<CategoryItemDto>>
 {
     private readonly ICategoryRepository _categoryRepository;
 
@@ -16,17 +16,17 @@ public sealed class GetCategoryByIdQueryHandler
         _categoryRepository = categoryRepository;
     }
 
-    public async Task<Result<CategoryDto>> Handle(
+    public async Task<Result<CategoryItemDto>> Handle(
         GetCategoryByIdQuery request,
         CancellationToken cancellationToken)
     {
         var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
         if (category is null)
         {
-            return Result.Failure<CategoryDto>(CategoryErrors.NotFound);
+            return Result.Failure<CategoryItemDto>(CategoryErrors.NotFound);
         }
 
-        var dto = new CategoryDto(
+        var dto = new CategoryItemDto(
             category.Categoryid,
             category.Parentcategoryid,
             category.Name,

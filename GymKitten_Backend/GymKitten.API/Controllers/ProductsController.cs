@@ -21,14 +21,21 @@ public class ProductsController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAllProducts(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null,
-        [FromQuery] Guid? categoryId = null,
+        [FromQuery] GetAllProductsQuery query,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetAllProductsQuery(page, pageSize, searchTerm, categoryId);
         var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Get Products Failed",
+                Detail = result.Error.Message,
+                Extensions = { { "code", result.Error.Code } }
+            });
+        }
 
         return Ok(result.Value);
     }

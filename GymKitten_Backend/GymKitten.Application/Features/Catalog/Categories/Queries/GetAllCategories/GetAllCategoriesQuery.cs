@@ -3,13 +3,8 @@ using GymKitten.Domain.Common;
 
 namespace GymKitten.Application.Features.Catalog.Categories.Queries.GetAllCategories;
 
-public record CategoryDto(
-    Guid CategoryId,
-    Guid? ParentCategoryId,
-    string Name,
-    string Slug,
-    string? Description,
-    int DisplayOrder,
-    DateTime CreatedAt);
-
-public sealed record GetAllCategoriesQuery : IQuery<Result<List<CategoryDto>>>;
+public sealed record GetAllCategoriesQuery(
+    string? SearchName = null,
+    Guid? ParentCategoryId = null,
+    int Page = 1,
+    int PageSize = 10) : IQuery<Result<GetAllCategoriesResponse>>;

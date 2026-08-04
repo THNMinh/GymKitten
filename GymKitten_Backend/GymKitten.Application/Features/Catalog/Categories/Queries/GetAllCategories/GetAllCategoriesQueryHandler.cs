@@ -5,7 +5,7 @@ using GymKitten.Domain.Common;
 namespace GymKitten.Application.Features.Catalog.Categories.Queries.GetAllCategories;
 
 public sealed class GetAllCategoriesQueryHandler
-    : IQueryHandler<GetAllCategoriesQuery, Result<List<CategoryDto>>>
+    : IQueryHandler<GetAllCategoriesQuery, Result<GetAllCategoriesResponse>>
 {
     private readonly ICategoryRepository _categoryRepository;
 
@@ -14,13 +14,18 @@ public sealed class GetAllCategoriesQueryHandler
         _categoryRepository = categoryRepository;
     }
 
-    public async Task<Result<List<CategoryDto>>> Handle(
+    public async Task<Result<GetAllCategoriesResponse>> Handle(
         GetAllCategoriesQuery request,
         CancellationToken cancellationToken)
     {
-        var categories = await _categoryRepository.GetAllAsync(cancellationToken);
+        var (categories, total) = await _categoryRepository.SearchCategoriesAsync(
+            request.SearchName,
+            request.ParentCategoryId,
+            request.Page,
+            request.PageSize,
+            cancellationToken);
 
-        var dtos = categories.Select(c => new CategoryDto(
+        var items = categories.Select(c => new CategoryItemDto(
             c.Categoryid,
             c.Parentcategoryid,
             c.Name,
@@ -29,6 +34,15 @@ public sealed class GetAllCategoriesQueryHandler
             c.Displayorder,
             c.Createdat)).ToList();
 
-        return Result.Success(dtos);
+        var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);
+
+        var response = new GetAllCategoriesResponse(
+            items,
+            total,
+            request.Page,
+            request.PageSize,
+            totalPages);
+
+        return Result.Success(response);
     }
 }
