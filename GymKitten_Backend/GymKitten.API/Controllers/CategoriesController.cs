@@ -20,16 +20,30 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllCategories(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAllCategories(
+        [FromQuery] GetAllCategoriesQuery query,
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetAllCategoriesQuery();
         var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Get Categories Failed",
+                Detail = result.Error.Message,
+                Extensions = { { "code", result.Error.Code } }
+            });
+        }
 
         return Ok(result.Value);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetCategoryById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCategoryById(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
         var query = new GetCategoryByIdQuery(id);
         var result = await _sender.Send(query, cancellationToken);
@@ -51,7 +65,7 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateCategory(
         [FromBody] CreateCategoryCommand command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(command, cancellationToken);
 
@@ -76,7 +90,7 @@ public class CategoriesController : ControllerBase
     public async Task<IActionResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryCommand command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         if (id != command.CategoryId)
         {
@@ -107,7 +121,7 @@ public class CategoriesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteCategory(
         Guid id,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var command = new DeleteCategoryCommand(id);
         var result = await _sender.Send(command, cancellationToken);

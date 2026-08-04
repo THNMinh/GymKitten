@@ -4,4 +4,4 @@ using GymKitten.Domain.Common;
 
 namespace GymKitten.Application.Features.Catalog.Categories.Queries.GetCategoryById;
 
-public sealed record GetCategoryByIdQuery(Guid CategoryId) : IQuery<Result<CategoryDto>>;
+public sealed record GetCategoryByIdQuery(Guid CategoryId) : IQuery<Result<CategoryItemDto>>;

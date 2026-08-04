@@ -8,9 +8,15 @@ public interface IProductRepository
 
     Task<Product?> GetProductWithImagesAsync(Guid productId, CancellationToken cancellationToken = default);
 
-    Task<List<Product>> GetAllPagedAsync(int page, int pageSize, string? searchTerm, Guid? categoryId, CancellationToken cancellationToken = default);
-
-    Task<int> GetTotalCountAsync(string? searchTerm, Guid? categoryId, CancellationToken cancellationToken = default);
+    Task<(IEnumerable<Product> Products, int Total)> SearchProductsAsync(
+        string? searchName,
+        string? gender,
+        string? fitType,
+        Guid? categoryId,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken = default);
 

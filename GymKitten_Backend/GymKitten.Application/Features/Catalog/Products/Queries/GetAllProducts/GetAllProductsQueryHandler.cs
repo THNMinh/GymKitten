@@ -5,7 +5,7 @@ using GymKitten.Domain.Common;
 namespace GymKitten.Application.Features.Catalog.Products.Queries.GetAllProducts;
 
 public sealed class GetAllProductsQueryHandler
-    : IQueryHandler<GetAllProductsQuery, Result<PagedResult<ProductListDto>>>
+    : IQueryHandler<GetAllProductsQuery, Result<GetAllProductsResponse>>
 {
     private readonly IProductRepository _productRepository;
 
@@ -14,32 +14,39 @@ public sealed class GetAllProductsQueryHandler
         _productRepository = productRepository;
     }
 
-    public async Task<Result<PagedResult<ProductListDto>>> Handle(
+    public async Task<Result<GetAllProductsResponse>> Handle(
         GetAllProductsQuery request,
         CancellationToken cancellationToken)
     {
-        var page = request.Page < 1 ? 1 : request.Page;
-        var pageSize = request.PageSize < 1 ? 10 : request.PageSize;
+        var (products, total) = await _productRepository.SearchProductsAsync(
+            request.SearchName,
+            request.Gender,
+            request.FitType,
+            request.CategoryId,
+            request.IsActive,
+            request.Page,
+            request.PageSize,
+            cancellationToken);
 
-        var products = await _productRepository.GetAllPagedAsync(
-            page, pageSize, request.SearchTerm, request.CategoryId, cancellationToken);
-
-        var totalCount = await _productRepository.GetTotalCountAsync(
-            request.SearchTerm, request.CategoryId, cancellationToken);
-
-        var dtos = products.Select(p => new ProductListDto(
+        var items = products.Select(p => new ProductItemDto(
             p.Productid,
-            p.Categoryid,
             p.Name,
             p.Slug,
-            p.Description,
-            p.Fittype,
+            p.Productvariants.FirstOrDefault()?.Price ?? 0m,
             p.Gender,
-            p.Isactive,
+            p.Productimages.FirstOrDefault(img => img.Isprimary)?.Imageurl
+                ?? p.Productimages.FirstOrDefault()?.Imageurl,
             p.Createdat)).ToList();
 
-        var pagedResult = new PagedResult<ProductListDto>(dtos, page, pageSize, totalCount);
+        var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);
 
-        return Result.Success(pagedResult);
+        var response = new GetAllProductsResponse(
+            items,
+            total,
+            request.Page,
+            request.PageSize,
+            totalPages);
+
+        return Result.Success(response);
     }
 }

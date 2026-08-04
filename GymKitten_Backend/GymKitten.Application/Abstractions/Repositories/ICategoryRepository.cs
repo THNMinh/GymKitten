@@ -6,7 +6,12 @@ public interface ICategoryRepository
 {
     Task<Category?> GetByIdAsync(Guid categoryId, CancellationToken cancellationToken = default);
 
-    Task<List<Category>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<(IEnumerable<Category> Categories, int Total)> SearchCategoriesAsync(
+        string? searchName,
+        Guid? parentCategoryId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<bool> ExistsBySlugAsync(string slug, CancellationToken cancellationToken = default);
 

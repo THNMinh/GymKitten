@@ -6,7 +6,7 @@ public sealed class MinioSettings
 
     public string Endpoint { get; init; } = "localhost:9000";
 
-    public string AccessKey { get; init; } = "kickify_admin";
+    public string AccessKey { get; init; } = "gymkitten_admin";
 
     public string SecretKey { get; init; } = "miniolocal";
 
