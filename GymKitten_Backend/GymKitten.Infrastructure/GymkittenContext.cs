@@ -997,6 +997,26 @@ public partial class GymkittenContext : DbContext, IApplicationDbContext, IUnitO
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // Dynamic Soft Delete Interceptor
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                var deletedAtProperty = entry.Metadata.FindProperty("Deletedat");
+                if (deletedAtProperty != null)
+                {
+                    entry.State = EntityState.Modified;
+                    entry.Property("Deletedat").CurrentValue = DateTime.UtcNow;
+
+                    var updatedAtProperty = entry.Metadata.FindProperty("Updatedat");
+                    if (updatedAtProperty != null)
+                    {
+                        entry.Property("Updatedat").CurrentValue = DateTime.UtcNow;
+                    }
+                }
+            }
+        }
+
         // Collect domain events from all tracked User entities
         var usersWithEvents = ChangeTracker
             .Entries<User>()
