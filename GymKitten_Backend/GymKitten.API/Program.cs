@@ -1,7 +1,9 @@
 using GymKitten.Api.Middleware;
+using GymKitten.API.Hangfire;
 using GymKitten.API.Middleware;
 using GymKitten.Application;
 using GymKitten.Infrastructure;
+using Hangfire;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -100,6 +102,20 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Hangfire Dashboard UI
+var hangfireUser = builder.Configuration["Hangfire:Username"] ?? "admin";
+var hangfirePass = builder.Configuration["Hangfire:Password"] ?? "admin";
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[]
+    {
+        new HangfireAuthorizationFilter(hangfireUser, hangfirePass)
+    },
+    DashboardTitle = "GymKitten - Hangfire Dashboard",
+    DisplayStorageConnectionString = false
+});
 
 app.MapControllers();
 
