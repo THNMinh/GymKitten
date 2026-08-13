@@ -5,29 +5,35 @@ using GymKitten.Application.Features.Catalog.ProductVariants.Dtos;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Errors;
 
-namespace GymKitten.Application.Features.Catalog.Products.Queries.GetProductById;
+namespace GymKitten.Application.Features.Catalog.Products.Queries.GetProductBySlug;
 
-public sealed class GetProductByIdQueryHandler
-    : IQueryHandler<GetProductByIdQuery, Result<ProductDetailDto>>
+public sealed class GetProductBySlugQueryHandler
+    : IQueryHandler<GetProductBySlugQuery, Result<GetProductBySlugResponse>>
 {
     private readonly IProductRepository _productRepository;
 
-    public GetProductByIdQueryHandler(IProductRepository productRepository)
+    public GetProductBySlugQueryHandler(IProductRepository productRepository)
     {
         _productRepository = productRepository;
     }
 
-    public async Task<Result<ProductDetailDto>> Handle(
-        GetProductByIdQuery request,
+    public async Task<Result<GetProductBySlugResponse>> Handle(
+        GetProductBySlugQuery request,
         CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetProductWithImagesAsync(request.ProductId, cancellationToken);
-        if (product is null)
+        if (string.IsNullOrWhiteSpace(request.Slug))
         {
-            return Result.Failure<ProductDetailDto>(ProductErrors.NotFound);
+            return Result.Failure<GetProductBySlugResponse>(ProductErrors.NotFound);
         }
 
-        var imageDtos = product.Productimages
+        var product = await _productRepository.GetBySlugAsync(request.Slug.Trim().ToLower(), cancellationToken);
+
+        if (product is null || !product.Isactive)
+        {
+            return Result.Failure<GetProductBySlugResponse>(ProductErrors.NotFound);
+        }
+
+        var images = product.Productimages
             .OrderBy(img => img.Displayorder)
             .Select(img => new ProductImageDto(
                 img.Imageid,
@@ -38,7 +44,7 @@ public sealed class GetProductByIdQueryHandler
                 img.Isprimary))
             .ToList();
 
-        var variantDtos = product.Productvariants
+        var variants = product.Productvariants
             .OrderBy(v => v.Colorname)
             .ThenBy(v => v.Size)
             .Select(v => new ProductVariantDto(
@@ -54,7 +60,7 @@ public sealed class GetProductByIdQueryHandler
                 v.Inventoryitem != null ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved) : 10))
             .ToList();
 
-        var detailDto = new ProductDetailDto(
+        var response = new GetProductBySlugResponse(
             product.Productid,
             product.Categoryid,
             product.Name,
@@ -64,9 +70,9 @@ public sealed class GetProductByIdQueryHandler
             product.Gender,
             product.Isactive,
             product.Createdat,
-            imageDtos,
-            variantDtos);
+            images,
+            variants);
 
-        return Result.Success(detailDto);
+        return Result.Success(response);
     }
 }

@@ -1,11 +1,9 @@
-using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Features.Catalog.ProductImages.Commands.UploadProductImages;
 using GymKitten.Application.Features.Catalog.ProductVariants.Dtos;
-using GymKitten.Domain.Common;
 
-namespace GymKitten.Application.Features.Catalog.Products.Queries.GetProductById;
+namespace GymKitten.Application.Features.Catalog.Products.Queries.GetProductBySlug;
 
-public record ProductDetailDto(
+public sealed record GetProductBySlugResponse(
     Guid ProductId,
     Guid CategoryId,
     string Name,
@@ -17,5 +15,3 @@ public record ProductDetailDto(
     DateTime CreatedAt,
     List<ProductImageDto> Images,
     List<ProductVariantDto> Variants);
-
-public sealed record GetProductByIdQuery(Guid ProductId) : IQuery<Result<ProductDetailDto>>;

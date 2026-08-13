@@ -24,19 +24,31 @@ public sealed class GetAllProductsQueryHandler
             request.FitType,
             request.CategoryId,
             request.IsActive,
+            request.Colors,
+            request.Sizes,
+            request.MinPrice,
+            request.MaxPrice,
             request.Page,
             request.PageSize,
             cancellationToken);
 
-        var items = products.Select(p => new ProductItemDto(
-            p.Productid,
-            p.Name,
-            p.Slug,
-            p.Productvariants.FirstOrDefault()?.Price ?? 0m,
-            p.Gender,
-            p.Productimages.FirstOrDefault(img => img.Isprimary)?.Imageurl
-                ?? p.Productimages.FirstOrDefault()?.Imageurl,
-            p.Createdat)).ToList();
+        var items = products.Select(p =>
+        {
+            var primaryImage = p.Productimages
+                .OrderByDescending(img => img.Variantid == null)
+                .ThenByDescending(img => img.Isprimary)
+                .ThenBy(img => img.Displayorder)
+                .FirstOrDefault();
+
+            return new ProductItemDto(
+                p.Productid,
+                p.Name,
+                p.Slug,
+                p.Productvariants.Any() ? p.Productvariants.Min(v => v.Price) : 0m,
+                p.Gender,
+                primaryImage?.Imageurl,
+                p.Createdat);
+        }).ToList();
 
         var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);
 

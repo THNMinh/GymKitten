@@ -36,14 +36,22 @@ public sealed class GetMyWishlistQueryHandler
             request.PageSize,
             cancellationToken);
 
-        var items = wishlists.Select(w => new WishlistItemDto(
-            w.Productid,
-            w.Product.Name,
-            w.Product.Slug,
-            w.Product.Productvariants.Any() ? w.Product.Productvariants.Min(v => v.Price) : 0m,
-            w.Product.Productimages.FirstOrDefault(img => img.Isprimary)?.Imageurl
-                ?? w.Product.Productimages.FirstOrDefault()?.Imageurl,
-            w.Createdat)).ToList();
+        var items = wishlists.Select(w =>
+        {
+            var primaryImage = w.Product.Productimages
+                .OrderByDescending(img => img.Variantid == null)
+                .ThenByDescending(img => img.Isprimary)
+                .ThenBy(img => img.Displayorder)
+                .FirstOrDefault();
+
+            return new WishlistItemDto(
+                w.Productid,
+                w.Product.Name,
+                w.Product.Slug,
+                w.Product.Productvariants.Any() ? w.Product.Productvariants.Min(v => v.Price) : 0m,
+                primaryImage?.Imageurl,
+                w.Createdat);
+        }).ToList();
 
         var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);
 

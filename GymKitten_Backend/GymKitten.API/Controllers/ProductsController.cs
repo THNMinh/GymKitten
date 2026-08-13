@@ -3,6 +3,7 @@ using GymKitten.Application.Features.Catalog.Products.Commands.DeleteProduct;
 using GymKitten.Application.Features.Catalog.Products.Commands.UpdateProduct;
 using GymKitten.Application.Features.Catalog.Products.Queries.GetAllProducts;
 using GymKitten.Application.Features.Catalog.Products.Queries.GetProductById;
+using GymKitten.Application.Features.Catalog.Products.Queries.GetProductBySlug;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -62,6 +63,28 @@ public class ProductsController : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpGet("slug/{slug}")]
+    public async Task<IActionResult> GetProductBySlug(
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetProductBySlugQuery(slug);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Product Not Found",
+                Detail = result.Error.Message,
+                Extensions = { { "code", result.Error.Code } }
+            });
+        }
+
+        return Ok(result.Value);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateProduct(
         [FromBody] CreateProductCommand command,
@@ -92,7 +115,7 @@ public class ProductsController : ControllerBase
         [FromBody] UpdateProductCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (id != command.ProductId)
+        if (command.ProductId != Guid.Empty && id != command.ProductId)
         {
             return BadRequest(new ProblemDetails
             {
@@ -102,7 +125,11 @@ public class ProductsController : ControllerBase
             });
         }
 
-        var result = await _sender.Send(command, cancellationToken);
+        var commandToExecute = command.ProductId == Guid.Empty
+            ? command with { ProductId = id }
+            : command;
+
+        var result = await _sender.Send(commandToExecute, cancellationToken);
 
         if (result.IsFailure)
         {
@@ -128,9 +155,9 @@ public class ProductsController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(new ProblemDetails
+            return BadRequest(new ProblemDetails
             {
-                Status = StatusCodes.Status404NotFound,
+                Status = StatusCodes.Status400BadRequest,
                 Title = "Delete Product Failed",
                 Detail = result.Error.Message,
                 Extensions = { { "code", result.Error.Code } }
