@@ -1,12 +1,18 @@
 using System.Text;
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
+using GymKitten.Application.Abstractions.Jobs;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Application.Abstractions.Storage;
 using GymKitten.Infrastructure.Auth;
+using GymKitten.Infrastructure.Jobs;
+using GymKitten.Infrastructure.Payment;
 using GymKitten.Infrastructure.Repositories;
 using GymKitten.Infrastructure.Settings;
 using GymKitten.Infrastructure.Storage;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +20,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
+using VNPAY;
+using VNPAY.Extensions;
 
 namespace GymKitten.Infrastructure;
 
@@ -47,6 +55,44 @@ public static class DependencyInjection
         services.AddScoped<IWishlistRepository, WishlistRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
+        services.AddScoped<IInventoryRepository, InventoryRepository>();
+
+        // Hangfire PostgreSQL Setup
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            services.AddHangfire(config => config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UsePostgreSqlStorage(options =>
+                    options.UseNpgsqlConnection(connectionString),
+                    new PostgreSqlStorageOptions
+                    {
+                        PrepareSchemaIfNecessary = true,
+                        SchemaName = "hangfire",
+                        QueuePollInterval = TimeSpan.FromSeconds(15)
+                    }));
+
+            services.AddHangfireServer();
+        }
+
+        services.AddScoped<IOrderAutoCancelService, OrderAutoCancelService>();
+
+        // VNPay Setup
+        var vnpayConfig = configuration.GetSection("VNPAY");
+        services.AddVnpayClient(config =>
+        {
+            config.TmnCode = vnpayConfig["TmnCode"] ?? "ATXZOOS2";
+            config.HashSecret = vnpayConfig["HashSecret"] ?? "IYAQRT2DBBFWMC8PIZHYX4Z2RFKFBK2A";
+            config.BaseUrl = vnpayConfig["BaseUrl"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+            config.CallbackUrl = vnpayConfig["CallbackUrl"] ?? "http://localhost:5000/api/payment/vnpay-callback";
+            config.Version = vnpayConfig["Version"] ?? "2.1.0";
+            config.OrderType = vnpayConfig["OrderType"] ?? "other";
+        });
+
+        services.AddScoped<IVnPayService, VnPayService>();
 
         // MinIO Settings & Client
         var minioSection = configuration.GetSection(MinioSettings.SectionName);
@@ -101,7 +147,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtProvider, JwtProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
 
-        // OTP & Email services (stub implementations)
+        // OTP & Email services
         services.AddSingleton<IOtpGenerator, OtpGenerator>();
         services.AddSingleton<IRedisOtpStore, InMemoryOtpStore>();
         services.AddSingleton<IEmailJobService, StubEmailJobService>();
