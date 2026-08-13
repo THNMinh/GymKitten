@@ -9,5 +9,9 @@ public sealed record GetAllProductsQuery(
     string? FitType = null,
     Guid? CategoryId = null,
     bool? IsActive = null,
+    List<string>? Colors = null,
+    List<string>? Sizes = null,
+    decimal? MinPrice = null,
+    decimal? MaxPrice = null,
     int Page = 1,
     int PageSize = 10) : IQuery<Result<GetAllProductsResponse>>;

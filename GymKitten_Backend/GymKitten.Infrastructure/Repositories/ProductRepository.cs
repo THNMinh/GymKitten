@@ -19,10 +19,23 @@ public sealed class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(p => p.Productid == productId, cancellationToken);
     }
 
+    public async Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .AsNoTracking()
+            .Include(p => p.Productimages)
+            .Include(p => p.Productvariants)
+                .ThenInclude(v => v.Inventoryitem)
+            .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+    }
+
     public async Task<Product?> GetProductWithImagesAsync(Guid productId, CancellationToken cancellationToken = default)
     {
         return await _context.Products
+            .AsNoTracking()
             .Include(p => p.Productimages)
+            .Include(p => p.Productvariants)
+                .ThenInclude(v => v.Inventoryitem)
             .FirstOrDefaultAsync(p => p.Productid == productId, cancellationToken);
     }
 
@@ -32,6 +45,10 @@ public sealed class ProductRepository : IProductRepository
         string? fitType,
         Guid? categoryId,
         bool? isActive,
+        List<string>? colors,
+        List<string>? sizes,
+        decimal? minPrice,
+        decimal? maxPrice,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -68,6 +85,29 @@ public sealed class ProductRepository : IProductRepository
         if (isActive.HasValue)
         {
             query = query.Where(p => p.Isactive == isActive.Value);
+        }
+
+        // Deep Filtering on Productvariants
+        if (colors != null && colors.Count > 0)
+        {
+            var colorSet = colors.Select(c => c.Trim().ToLower()).ToList();
+            query = query.Where(p => p.Productvariants.Any(v => colorSet.Contains(v.Colorname.ToLower())));
+        }
+
+        if (sizes != null && sizes.Count > 0)
+        {
+            var sizeSet = sizes.Select(s => s.Trim().ToLower()).ToList();
+            query = query.Where(p => p.Productvariants.Any(v => sizeSet.Contains(v.Size.ToLower())));
+        }
+
+        if (minPrice.HasValue)
+        {
+            query = query.Where(p => p.Productvariants.Any(v => v.Price >= minPrice.Value));
+        }
+
+        if (maxPrice.HasValue)
+        {
+            query = query.Where(p => p.Productvariants.Any(v => v.Price <= maxPrice.Value));
         }
 
         // Count First

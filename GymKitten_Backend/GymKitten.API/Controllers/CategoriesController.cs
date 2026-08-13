@@ -92,7 +92,7 @@ public class CategoriesController : ControllerBase
         [FromBody] UpdateCategoryCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (id != command.CategoryId)
+        if (command.CategoryId != Guid.Empty && id != command.CategoryId)
         {
             return BadRequest(new ProblemDetails
             {
@@ -102,7 +102,11 @@ public class CategoriesController : ControllerBase
             });
         }
 
-        var result = await _sender.Send(command, cancellationToken);
+        var commandToExecute = command.CategoryId == Guid.Empty
+            ? command with { CategoryId = id }
+            : command;
+
+        var result = await _sender.Send(commandToExecute, cancellationToken);
 
         if (result.IsFailure)
         {

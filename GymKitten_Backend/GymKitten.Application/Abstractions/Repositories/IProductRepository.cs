@@ -6,6 +6,8 @@ public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(Guid productId, CancellationToken cancellationToken = default);
 
+    Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
+
     Task<Product?> GetProductWithImagesAsync(Guid productId, CancellationToken cancellationToken = default);
 
     Task<(IEnumerable<Product> Products, int Total)> SearchProductsAsync(
@@ -14,6 +16,10 @@ public interface IProductRepository
         string? fitType,
         Guid? categoryId,
         bool? isActive,
+        List<string>? colors,
+        List<string>? sizes,
+        decimal? minPrice,
+        decimal? maxPrice,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
