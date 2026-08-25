@@ -1,4 +1,5 @@
 using GymKitten.Application.Abstractions.Services;
+using GymKitten.Application.Features.Payment.Commands.ProcessMomoIpn;
 using GymKitten.Application.Features.Payment.Commands.ProcessVnPayIpn;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -6,16 +7,22 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymKitten.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/payment")]
+[Route("api/payments")]
 public class PaymentController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly IVnPayService _vnPayService;
+    private readonly IConfiguration _configuration;
 
-    public PaymentController(ISender sender, IVnPayService vnPayService)
+    public PaymentController(
+        ISender sender,
+        IVnPayService vnPayService,
+        IConfiguration configuration)
     {
         _sender = sender;
         _vnPayService = vnPayService;
+        _configuration = configuration;
     }
 
     [HttpGet("vnpay-ipn")]
@@ -52,28 +59,51 @@ public class PaymentController : ControllerBase
     [HttpGet("vnpay-callback")]
     public async Task<IActionResult> VnPayCallback(CancellationToken cancellationToken = default)
     {
+        var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:8081";
+
         var callbackData = _vnPayService.ProcessCallback(Request.Query);
         if (callbackData is null)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Invalid Payment Callback Data"
-            });
+            return Redirect($"{frontendUrl}/orders/success?isSuccess=false&message=InvalidCallbackData");
         }
 
-        // Also process IPN logic as fallback if IPN didn't reach yet
         var command = new ProcessVnPayIpnCommand(callbackData);
         await _sender.Send(command, cancellationToken);
 
-        return Ok(new
+        var isSuccess = callbackData.IsSuccess;
+        var redirectUrl = $"{frontendUrl}/orders/success?orderCode={callbackData.TxnRef}&total={callbackData.Amount}&isSuccess={isSuccess.ToString().ToLower()}";
+
+        return Redirect(redirectUrl);
+    }
+
+    [HttpPost("momo-ipn")]
+    public async Task<IActionResult> ProcessMomoIpn(
+        [FromBody] ProcessMomoIpnCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
         {
-            TxnRef = callbackData.TxnRef,
-            Amount = callbackData.Amount,
-            IsSuccess = callbackData.IsSuccess,
-            ResponseCode = callbackData.ResponseCode,
-            BankCode = callbackData.BankCode,
-            TransactionNo = callbackData.TransactionNo
-        });
+            return BadRequest(new { message = result.Error.Message });
+        }
+
+        return NoContent(); // Fast 204 response as required by MoMo IPN specification
+    }
+
+    [HttpGet("momo-return")]
+    public IActionResult ProcessMomoReturn(
+        [FromQuery] string orderId,
+        [FromQuery] int resultCode,
+        [FromQuery] string message,
+        [FromQuery] long? amount)
+    {
+        var isSuccess = resultCode == 0;
+        var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:8081";
+
+        var totalAmount = amount ?? 0;
+        var redirectUrl = $"{frontendUrl}/orders/success?orderCode={orderId}&total={totalAmount}&isSuccess={isSuccess.ToString().ToLower()}&message={Uri.EscapeDataString(message ?? "")}";
+
+        return Redirect(redirectUrl);
     }
 }

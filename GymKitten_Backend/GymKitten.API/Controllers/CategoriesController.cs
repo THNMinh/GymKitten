@@ -89,24 +89,18 @@ public class CategoriesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateCategory(
         Guid id,
-        [FromBody] UpdateCategoryCommand command,
+        [FromBody] UpdateCategoryRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (command.CategoryId != Guid.Empty && id != command.CategoryId)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Invalid CategoryId",
-                Detail = "Route CategoryId does not match command CategoryId."
-            });
-        }
+        var command = new UpdateCategoryCommand(
+            id,
+            request.ParentCategoryId,
+            request.Name,
+            request.Slug,
+            request.Description,
+            request.DisplayOrder);
 
-        var commandToExecute = command.CategoryId == Guid.Empty
-            ? command with { CategoryId = id }
-            : command;
-
-        var result = await _sender.Send(commandToExecute, cancellationToken);
+        var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {

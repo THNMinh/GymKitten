@@ -15,4 +15,8 @@ public static class PaymentErrors
     public static readonly Error CallbackFailed = new(
         "Payment.CallbackFailed",
         "Payment processing failed at gateway.");
+
+    public static readonly Error InvalidSignature = new(
+        "Payment.InvalidSignature",
+        "Payment gateway IPN signature verification failed.");
 }

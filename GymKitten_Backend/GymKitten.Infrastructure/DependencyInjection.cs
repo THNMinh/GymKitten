@@ -8,6 +8,7 @@ using GymKitten.Application.Abstractions.Storage;
 using GymKitten.Infrastructure.Auth;
 using GymKitten.Infrastructure.Jobs;
 using GymKitten.Infrastructure.Payment;
+using GymKitten.Infrastructure.Payment.MoMo;
 using GymKitten.Infrastructure.Repositories;
 using GymKitten.Infrastructure.Settings;
 using GymKitten.Infrastructure.Storage;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
 
         // Hangfire PostgreSQL Setup
         if (!string.IsNullOrEmpty(connectionString))
@@ -84,15 +86,20 @@ public static class DependencyInjection
         var vnpayConfig = configuration.GetSection("VNPAY");
         services.AddVnpayClient(config =>
         {
-            config.TmnCode = vnpayConfig["TmnCode"] ?? "ATXZOOS2";
-            config.HashSecret = vnpayConfig["HashSecret"] ?? "IYAQRT2DBBFWMC8PIZHYX4Z2RFKFBK2A";
+            config.TmnCode = vnpayConfig["TmnCode"] ?? "CGXZ858Z";
+            config.HashSecret = vnpayConfig["HashSecret"] ?? "NRA35K51WII3FWT1IARU2GOM647ZOMN0";
             config.BaseUrl = vnpayConfig["BaseUrl"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-            config.CallbackUrl = vnpayConfig["CallbackUrl"] ?? "http://localhost:5000/api/payment/vnpay-callback";
+            config.CallbackUrl = vnpayConfig["CallbackUrl"] ?? "https://localhost:7191/api/payment/vnpay-callback";
             config.Version = vnpayConfig["Version"] ?? "2.1.0";
             config.OrderType = vnpayConfig["OrderType"] ?? "other";
         });
 
         services.AddScoped<IVnPayService, VnPayService>();
+
+        // MoMo Setup
+        var momoSection = configuration.GetSection(MomoOptionModel.SectionName);
+        services.Configure<MomoOptionModel>(momoSection);
+        services.AddHttpClient<IMomoService, MomoService>();
 
         // MinIO Settings & Client
         var minioSection = configuration.GetSection(MinioSettings.SectionName);

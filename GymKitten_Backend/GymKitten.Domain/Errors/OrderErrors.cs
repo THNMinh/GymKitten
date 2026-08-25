@@ -23,4 +23,12 @@ public static class OrderErrors
     public static readonly Error AlreadyPaid = new(
         "Order.AlreadyPaid",
         "The order has already been paid.");
+
+    public static readonly Error InvalidStatus = new(
+        "Order.InvalidStatus",
+        "The order status is invalid for this operation.");
+
+    public static readonly Error AlreadyShipped = new(
+        "Order.AlreadyShipped",
+        "The order has already been shipped.");
 }
