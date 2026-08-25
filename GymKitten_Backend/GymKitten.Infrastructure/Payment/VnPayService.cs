@@ -26,15 +26,9 @@ public class VnPayService : IVnPayService
         };
 
         var paymentUrlInfo = _vnpayClient.CreatePaymentUrl(request);
-        var txnRef = customTransactionId?.ToString() ?? request.PaymentId.ToString();
+        var txnRef = request.PaymentId.ToString();
 
-        var url = paymentUrlInfo.Url;
-        if (customTransactionId.HasValue)
-        {
-            url = ReplaceQueryParam(url, "vnp_TxnRef", customTransactionId.Value.ToString());
-        }
-
-        return (url, txnRef);
+        return (paymentUrlInfo.Url, txnRef);
     }
 
     public VnPayCallbackData? ProcessCallback(IQueryCollection query)
@@ -77,17 +71,5 @@ public class VnPayService : IVnPayService
         {
             return null;
         }
-    }
-
-    private static string ReplaceQueryParam(string url, string key, string value)
-    {
-        var uri = new Uri(url);
-        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-
-        var dictionary = query.ToDictionary(k => k.Key, v => v.Value.ToString());
-        dictionary[key] = value;
-
-        var newQueryString = string.Join("&", dictionary.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
-        return $"{uri.Scheme}://{uri.Authority}{uri.AbsolutePath}?{newQueryString}";
     }
 }

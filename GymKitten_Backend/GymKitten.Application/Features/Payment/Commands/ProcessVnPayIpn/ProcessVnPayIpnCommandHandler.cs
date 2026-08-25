@@ -31,12 +31,12 @@ public sealed class ProcessVnPayIpnCommandHandler
     {
         var callback = request.CallbackData;
 
-        if (!Guid.TryParse(callback.TxnRef, out var transactionId))
+        if (string.IsNullOrWhiteSpace(callback.TxnRef))
         {
             return Result.Success(new ProcessVnPayIpnCommandResponse(false, "01", "Order not found"));
         }
 
-        var transaction = await _paymentTransactionRepository.GetByTransactionIdAsync(transactionId, cancellationToken);
+        var transaction = await _paymentTransactionRepository.GetByTxnRefAsync(callback.TxnRef, cancellationToken);
         if (transaction is null)
         {
             return Result.Success(new ProcessVnPayIpnCommandResponse(false, "01", "Order not found"));
@@ -90,7 +90,7 @@ public sealed class ProcessVnPayIpnCommandHandler
 
         // Payment Success
         transaction.Status = "Success";
-        transaction.Gatewaytransactionid = callback.TransactionNo;
+        transaction.Gatewaytransactionid = string.IsNullOrEmpty(callback.TransactionNo) ? callback.TxnRef : callback.TransactionNo;
         transaction.Paymentdate = DateTime.UtcNow;
         transaction.Updatedat = DateTime.UtcNow;
         _paymentTransactionRepository.Update(transaction);

@@ -20,6 +20,7 @@ public sealed class CheckoutCommandHandler
     private readonly IPaymentTransactionRepository _paymentTransactionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IVnPayService _vnPayService;
+    private readonly IMomoService _momoService;
     private readonly IOrderAutoCancelService _orderAutoCancelService;
 
     public CheckoutCommandHandler(
@@ -30,6 +31,7 @@ public sealed class CheckoutCommandHandler
         IPaymentTransactionRepository paymentTransactionRepository,
         IUnitOfWork unitOfWork,
         IVnPayService vnPayService,
+        IMomoService momoService,
         IOrderAutoCancelService orderAutoCancelService)
     {
         _userContext = userContext;
@@ -39,6 +41,7 @@ public sealed class CheckoutCommandHandler
         _paymentTransactionRepository = paymentTransactionRepository;
         _unitOfWork = unitOfWork;
         _vnPayService = vnPayService;
+        _momoService = momoService;
         _orderAutoCancelService = orderAutoCancelService;
     }
 
@@ -138,7 +141,7 @@ public sealed class CheckoutCommandHandler
         if (paymentMethodUpper == "VNPAY")
         {
             var transactionId = Guid.NewGuid();
-            var paymentResult = _vnPayService.CreatePaymentUrl(order.Totalamount, $"Payment for order {order.Ordercode}", transactionId);
+            var paymentResult = _vnPayService.CreatePaymentUrl(order.Totalamount, $"Payment for order {order.Ordercode}");
             paymentUrl = paymentResult.Url;
 
             var transaction = new Paymenttransaction
@@ -146,6 +149,36 @@ public sealed class CheckoutCommandHandler
                 Transactionid = transactionId,
                 Orderid = order.Orderid,
                 Gateway = "VNPay",
+                Gatewaytransactionid = paymentResult.TxnRef,
+                Amount = order.Totalamount,
+                Status = "Pending",
+                Createdat = DateTime.UtcNow,
+                Updatedat = DateTime.UtcNow
+            };
+
+            await _paymentTransactionRepository.AddAsync(transaction, cancellationToken);
+
+            // Schedule auto-cancel after 15 minutes if unpaid
+            _orderAutoCancelService.ScheduleAutoCancel(order.Orderid, TimeSpan.FromMinutes(15));
+        }
+        else if (paymentMethodUpper == "MOMO")
+        {
+            var momoResponse = await _momoService.CreatePaymentAsync(order.Orderid, order.Totalamount, $"Payment for Order {order.Ordercode}", cancellationToken);
+
+            if (momoResponse is null || momoResponse.ResultCode != 0 || string.IsNullOrEmpty(momoResponse.PayUrl))
+            {
+                return Result.Failure<CheckoutCommandResponse>(new Error(
+                    "MoMo.PaymentFailed",
+                    string.IsNullOrWhiteSpace(momoResponse?.Message) ? "Failed to create MoMo payment URL." : momoResponse.Message));
+            }
+
+            paymentUrl = momoResponse.PayUrl;
+
+            var transaction = new Paymenttransaction
+            {
+                Transactionid = Guid.NewGuid(),
+                Orderid = order.Orderid,
+                Gateway = "MoMo",
                 Gatewaytransactionid = null,
                 Amount = order.Totalamount,
                 Status = "Pending",

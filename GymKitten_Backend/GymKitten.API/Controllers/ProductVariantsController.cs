@@ -67,24 +67,20 @@ public class ProductVariantsController : ControllerBase
     [HttpPut("variants/{variantId:guid}")]
     public async Task<IActionResult> UpdateProductVariant(
         Guid variantId,
-        [FromBody] UpdateProductVariantCommand command,
+        [FromBody] UpdateProductVariantRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (command.VariantId != Guid.Empty && command.VariantId != variantId)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Invalid VariantId",
-                Detail = "Route VariantId does not match command VariantId."
-            });
-        }
+        var command = new UpdateProductVariantCommand(
+            variantId,
+            request.Sku,
+            request.ColorName,
+            request.ColorHex,
+            request.Size,
+            request.Price,
+            request.OriginalPrice,
+            request.WeightGrams);
 
-        var commandToExecute = command.VariantId == Guid.Empty
-            ? command with { VariantId = variantId }
-            : command;
-
-        var result = await _sender.Send(commandToExecute, cancellationToken);
+        var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {

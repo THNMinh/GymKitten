@@ -112,24 +112,20 @@ public class ProductsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateProduct(
         Guid id,
-        [FromBody] UpdateProductCommand command,
+        [FromBody] UpdateProductRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (command.ProductId != Guid.Empty && id != command.ProductId)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Invalid ProductId",
-                Detail = "Route ProductId does not match command ProductId."
-            });
-        }
+        var command = new UpdateProductCommand(
+            id,
+            request.CategoryId,
+            request.Name,
+            request.Slug,
+            request.Description,
+            request.FitType,
+            request.Gender,
+            request.IsActive);
 
-        var commandToExecute = command.ProductId == Guid.Empty
-            ? command with { ProductId = id }
-            : command;
-
-        var result = await _sender.Send(commandToExecute, cancellationToken);
+        var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {

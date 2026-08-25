@@ -24,7 +24,9 @@ public sealed class CheckoutCommandValidator : AbstractValidator<CheckoutCommand
 
         RuleFor(x => x.PaymentMethod)
             .NotEmpty().WithMessage("Payment method is required.")
-            .Must(m => m.Equals("COD", StringComparison.OrdinalIgnoreCase) || m.Equals("VNPAY", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Payment method must be 'COD' or 'VNPAY'.");
+            .Must(m => m.Equals("COD", StringComparison.OrdinalIgnoreCase) ||
+                       m.Equals("VNPAY", StringComparison.OrdinalIgnoreCase) ||
+                       m.Equals("MOMO", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Payment method must be 'COD', 'VNPAY', or 'MOMO'.");
     }
 }

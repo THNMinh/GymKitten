@@ -12,15 +12,18 @@ public sealed class CreateProductVariantCommandHandler
 {
     private readonly IProductRepository _productRepository;
     private readonly IProductVariantRepository _productVariantRepository;
+    private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateProductVariantCommandHandler(
         IProductRepository productRepository,
         IProductVariantRepository productVariantRepository,
+        IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork)
     {
         _productRepository = productRepository;
         _productVariantRepository = productVariantRepository;
+        _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -60,6 +63,22 @@ public sealed class CreateProductVariantCommandHandler
         };
 
         await _productVariantRepository.AddAsync(variant, cancellationToken);
+
+        // 4. Automatically initialize an empty inventory item
+        var emptyInventory = new Inventoryitem
+        {
+            Inventoryid = Guid.NewGuid(),
+            Variantid = variant.Variantid,
+            Quantityonhand = 0,
+            Quantityreserved = 0,
+            Safetystock = 5,
+            Rowversion = 1,
+            Createdat = now,
+            Updatedat = now
+        };
+
+        await _inventoryRepository.AddAsync(emptyInventory, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new CreateProductVariantResponse(variant.Variantid));

@@ -1,4 +1,5 @@
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Features.Admin.Inventory.Queries.GetInventory;
 using GymKitten.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,58 @@ public sealed class InventoryRepository : IInventoryRepository
         return await _context.Inventoryitems
             .Where(i => ids.Contains(i.Variantid))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(List<InventoryItemDto> Items, int TotalCount)> GetInventoryPagedAsync(
+        string? sku,
+        string? productName,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Inventoryitems
+            .AsNoTracking()
+            .Include(i => i.Variant)
+                .ThenInclude(v => v.Product)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(sku))
+        {
+            var skuTerm = sku.Trim().ToLower();
+            query = query.Where(i => i.Variant.Sku.ToLower().Contains(skuTerm));
+        }
+
+        if (!string.IsNullOrWhiteSpace(productName))
+        {
+            var nameTerm = productName.Trim().ToLower();
+            query = query.Where(i => i.Variant.Product.Name.ToLower().Contains(nameTerm));
+        }
+
+        // Count First
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Take Later
+        var items = await query
+            .OrderBy(i => i.Variant.Sku)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(i => new InventoryItemDto(
+                i.Variantid,
+                i.Variant.Sku,
+                i.Variant.Product.Name,
+                i.Variant.Colorname,
+                i.Variant.Size,
+                i.Quantityonhand,
+                i.Quantityreserved,
+                i.Quantityonhand - i.Quantityreserved))
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task AddAsync(Inventoryitem inventoryItem, CancellationToken cancellationToken = default)
+    {
+        await _context.Inventoryitems.AddAsync(inventoryItem, cancellationToken);
     }
 
     public void Update(Inventoryitem inventoryItem)
