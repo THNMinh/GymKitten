@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.Catalog.Categories.Commands.CreateCategory;
 using GymKitten.Application.Features.Catalog.Categories.Commands.DeleteCategory;
 using GymKitten.Application.Features.Catalog.Categories.Commands.UpdateCategory;
@@ -20,74 +22,41 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllCategories(
+    public async Task<IResult> GetAllCategories(
         [FromQuery] GetAllCategoriesQuery query,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Get Categories Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetCategoryById(
+    public async Task<IResult> GetCategoryById(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetCategoryByIdQuery(id);
-        var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Category Not Found",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        var result = await _sender.Send(new GetCategoryByIdQuery(id), cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateCategory(
-        [FromBody] CreateCategoryCommand command,
+    public async Task<IResult> CreateCategory(
+        [FromBody] CreateCategoryRequest request,
         CancellationToken cancellationToken = default)
     {
+        var command = new CreateCategoryCommand(
+            request.ParentCategoryId,
+            request.Name,
+            request.Slug,
+            request.Description,
+            request.DisplayOrder);
+
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Create Category Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return CreatedAtAction(
-            actionName: nameof(GetCategoryById),
-            routeValues: new { id = result.Value.CategoryId },
-            value: result.Value);
+        return result.MatchCreated(val => $"/api/categories/{val.CategoryId}");
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateCategory(
+    public async Task<IResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryRequest request,
         CancellationToken cancellationToken = default)
@@ -101,40 +70,15 @@ public class CategoriesController : ControllerBase
             request.DisplayOrder);
 
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Update Category Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> DeleteCategory(
+    public async Task<IResult> DeleteCategory(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var command = new DeleteCategoryCommand(id);
-        var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Delete Category Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return NoContent();
+        var result = await _sender.Send(new DeleteCategoryCommand(id), cancellationToken);
+        return result.MatchOk();
     }
 }

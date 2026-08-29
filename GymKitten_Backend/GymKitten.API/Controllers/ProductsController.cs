@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.Catalog.Products.Commands.CreateProduct;
 using GymKitten.Application.Features.Catalog.Products.Commands.DeleteProduct;
 using GymKitten.Application.Features.Catalog.Products.Commands.UpdateProduct;
@@ -21,96 +23,51 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllProducts(
+    public async Task<IResult> GetAllProducts(
         [FromQuery] GetAllProductsQuery query,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Get Products Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetProductById(
+    public async Task<IResult> GetProductById(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetProductByIdQuery(id);
-        var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Product Not Found",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        var result = await _sender.Send(new GetProductByIdQuery(id), cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpGet("slug/{slug}")]
-    public async Task<IActionResult> GetProductBySlug(
+    public async Task<IResult> GetProductBySlug(
         string slug,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetProductBySlugQuery(slug);
-        var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Product Not Found",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        var result = await _sender.Send(new GetProductBySlugQuery(slug), cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateProduct(
-        [FromBody] CreateProductCommand command,
+    public async Task<IResult> CreateProduct(
+        [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken = default)
     {
+        var command = new CreateProductCommand(
+            request.CategoryId,
+            request.Name,
+            request.Slug,
+            request.Description,
+            request.FitType,
+            request.Gender);
+
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Create Product Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return CreatedAtAction(
-            actionName: nameof(GetProductById),
-            routeValues: new { id = result.Value.ProductId },
-            value: result.Value);
+        return result.MatchCreated(val => $"/api/products/{val.ProductId}");
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateProduct(
+    public async Task<IResult> UpdateProduct(
         Guid id,
         [FromBody] UpdateProductRequest request,
         CancellationToken cancellationToken = default)
@@ -126,40 +83,15 @@ public class ProductsController : ControllerBase
             request.IsActive);
 
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Update Product Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> DeleteProduct(
+    public async Task<IResult> DeleteProduct(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var command = new DeleteProductCommand(id);
-        var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Delete Product Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return NoContent();
+        var result = await _sender.Send(new DeleteProductCommand(id), cancellationToken);
+        return result.MatchOk();
     }
 }

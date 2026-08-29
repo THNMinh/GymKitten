@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.Auth.Login;
 using GymKitten.Application.Features.Auth.RefreshToken;
 using GymKitten.Application.Features.Auth.Register;
@@ -18,71 +20,36 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register(
-        [FromBody] RegisterCustomerCommand command,
+    public async Task<IResult> Register(
+        [FromBody] RegisterRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RegisterCustomerCommand(
+            request.FullName,
+            request.Email,
+            request.Password);
+
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return Conflict(new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Registration Failed",
-                Detail = result.Error.Message,
-                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return CreatedAtAction(
-            actionName: null,
-            routeValues: null,
-            value: result.Value);
+        return result.MatchCreated(res => $"/api/users/{res.UserId}");
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login(
-        [FromBody] LoginCommand command,
+    public async Task<IResult> Login(
+        [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new LoginCommand(request.Email, request.Password);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return Unauthorized(new ProblemDetails
-            {
-                Status = StatusCodes.Status401Unauthorized,
-                Title = "Authentication Failed",
-                Detail = result.Error.Message,
-                Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken(
-        [FromBody] RefreshTokenCommand command,
+    public async Task<IResult> RefreshToken(
+        [FromBody] RefreshTokenRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RefreshTokenCommand(request.AccessToken, request.RefreshToken);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return Unauthorized(new ProblemDetails
-            {
-                Status = StatusCodes.Status401Unauthorized,
-                Title = "Token Refresh Failed",
-                Detail = result.Error.Message,
-                Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 }

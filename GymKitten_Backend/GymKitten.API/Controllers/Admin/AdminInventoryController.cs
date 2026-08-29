@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.Admin.Inventory.Commands.AdjustStock;
 using GymKitten.Application.Features.Admin.Inventory.Commands.Restock;
 using GymKitten.Application.Features.Admin.Inventory.Queries.GetInventory;
@@ -18,65 +20,31 @@ public class AdminInventoryController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetInventory(
+    public async Task<IResult> GetInventory(
         [FromQuery] GetInventoryQuery query,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Get Inventory Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpPost("restock")]
-    public async Task<IActionResult> Restock(
-        [FromBody] RestockCommand command,
+    public async Task<IResult> Restock(
+        [FromBody] RestockRequest request,
         CancellationToken cancellationToken = default)
     {
+        var command = new RestockCommand(request.VariantId, request.Quantity, request.ReferenceId ?? string.Empty);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Restock Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpPut("adjust")]
-    public async Task<IActionResult> AdjustStock(
-        [FromBody] AdjustStockCommand command,
+    public async Task<IResult> AdjustStock(
+        [FromBody] AdjustStockRequest request,
         CancellationToken cancellationToken = default)
     {
+        var command = new AdjustStockCommand(request.VariantId, request.NewQuantity, request.Note ?? string.Empty);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Adjust Stock Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 }

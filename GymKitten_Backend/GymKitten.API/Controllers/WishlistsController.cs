@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.SocialProof.Wishlists.Commands.RemoveWishlist;
 using GymKitten.Application.Features.SocialProof.Wishlists.Commands.ToggleWishlist;
 using GymKitten.Application.Features.SocialProof.Wishlists.Queries.GetMyWishlist;
@@ -20,66 +22,30 @@ public class WishlistsController : ControllerBase
     }
 
     [HttpPost("toggle")]
-    public async Task<IActionResult> ToggleWishlist(
-        [FromBody] ToggleWishlistCommand command,
+    public async Task<IResult> ToggleWishlist(
+        [FromBody] ToggleWishlistRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ToggleWishlistCommand(request.ProductId);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Toggle Wishlist Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 
     [HttpDelete("products/{productId:guid}")]
-    public async Task<IActionResult> RemoveWishlist(
+    public async Task<IResult> RemoveWishlist(
         Guid productId,
         CancellationToken cancellationToken)
     {
-        var command = new RemoveWishlistCommand(productId);
-        var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Remove Wishlist Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return NoContent();
+        var result = await _sender.Send(new RemoveWishlistCommand(productId), cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetMyWishlist(
+    public async Task<IResult> GetMyWishlist(
         [FromQuery] GetMyWishlistQuery query,
         CancellationToken cancellationToken)
     {
         var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Get Wishlist Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 }

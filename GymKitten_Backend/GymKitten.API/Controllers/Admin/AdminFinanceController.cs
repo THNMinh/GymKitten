@@ -1,3 +1,4 @@
+using GymKitten.API.Extensions;
 using GymKitten.Application.Features.Admin.Finance.Queries.GetTransactions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -16,23 +17,11 @@ public class AdminFinanceController : ControllerBase
     }
 
     [HttpGet("transactions")]
-    public async Task<IActionResult> GetTransactions(
+    public async Task<IResult> GetTransactions(
         [FromQuery] GetTransactionsQuery query,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Get Transactions Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 }
