@@ -1,3 +1,5 @@
+using GymKitten.API.Extensions;
+using GymKitten.API.Requests;
 using GymKitten.Application.Features.Order.Commands.Checkout;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,23 +20,17 @@ public class CheckoutController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    public async Task<IActionResult> Checkout(
-        [FromBody] CheckoutCommand command,
+    public async Task<IResult> Checkout(
+        [FromBody] CheckoutRequest request,
         CancellationToken cancellationToken = default)
     {
+        var command = new CheckoutCommand(
+            request.Items.Select(i => new CheckoutItemDto(i.VariantId, i.Quantity)).ToList(),
+            request.ShippingAddress,
+            request.PaymentMethod,
+            request.CustomerNote);
+
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Checkout Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        return result.MatchOk();
     }
 }

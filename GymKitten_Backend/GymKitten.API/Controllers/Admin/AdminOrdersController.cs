@@ -1,3 +1,4 @@
+using GymKitten.API.Extensions;
 using GymKitten.Application.Features.Admin.Orders.Commands.ShipOrder;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -16,24 +17,11 @@ public class AdminOrdersController : ControllerBase
     }
 
     [HttpPut("{orderId:guid}/ship")]
-    public async Task<IActionResult> ShipOrder(
+    public async Task<IResult> ShipOrder(
         Guid orderId,
         CancellationToken cancellationToken = default)
     {
-        var command = new ShipOrderCommand(orderId);
-        var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Ship Order Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        var result = await _sender.Send(new ShipOrderCommand(orderId), cancellationToken);
+        return result.MatchOk();
     }
 }

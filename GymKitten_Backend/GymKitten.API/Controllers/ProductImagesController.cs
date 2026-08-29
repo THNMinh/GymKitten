@@ -1,3 +1,4 @@
+using GymKitten.API.Extensions;
 using GymKitten.Application.Features.Catalog.ProductImages.Commands.DeleteProductImage;
 using GymKitten.Application.Features.Catalog.ProductImages.Commands.UploadProductImages;
 using GymKitten.Application.Features.Catalog.ProductImages.Queries.GetProductImagesByProduct;
@@ -18,30 +19,17 @@ public class ProductImagesController : ControllerBase
     }
 
     [HttpGet("{productId:guid}/images")]
-    public async Task<IActionResult> GetProductImagesByProduct(
+    public async Task<IResult> GetProductImagesByProduct(
         Guid productId,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetProductImagesByProductQuery(productId);
-        var result = await _sender.Send(query, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Product Images Not Found",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return Ok(result.Value);
+        var result = await _sender.Send(new GetProductImagesByProductQuery(productId), cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpPost("{productId:guid}/images")]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> UploadProductImages(
+    public async Task<IResult> UploadProductImages(
         Guid productId,
         [FromForm] List<IFormFile> photos,
         [FromForm] Guid? variantId,
@@ -49,43 +37,15 @@ public class ProductImagesController : ControllerBase
     {
         var command = new UploadProductImagesCommand(productId, variantId, photos);
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Upload Product Images Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return CreatedAtAction(
-            actionName: nameof(GetProductImagesByProduct),
-            routeValues: new { productId = result.Value.ProductId },
-            value: result.Value);
+        return result.MatchCreated(val => $"/api/products/{val.ProductId}/images");
     }
 
     [HttpDelete("images/{imageId:guid}")]
-    public async Task<IActionResult> DeleteProductImage(
+    public async Task<IResult> DeleteProductImage(
         Guid imageId,
         CancellationToken cancellationToken = default)
     {
-        var command = new DeleteProductImageCommand(imageId);
-        var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Delete Product Image Failed",
-                Detail = result.Error.Message,
-                Extensions = { { "code", result.Error.Code } }
-            });
-        }
-
-        return NoContent();
+        var result = await _sender.Send(new DeleteProductImageCommand(imageId), cancellationToken);
+        return result.MatchOk();
     }
 }

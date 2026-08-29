@@ -1,3 +1,4 @@
+using GymKitten.API.Extensions;
 using GymKitten.Application.Abstractions.Services;
 using GymKitten.Application.Features.Payment.Commands.ProcessMomoIpn;
 using GymKitten.Application.Features.Payment.Commands.ProcessVnPayIpn;
@@ -26,45 +27,28 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("vnpay-ipn")]
-    public async Task<IActionResult> VnPayIpn(CancellationToken cancellationToken = default)
+    public async Task<IResult> VnPayIpn(CancellationToken cancellationToken = default)
     {
-        try
+        var callbackData = _vnPayService.ProcessCallback(Request.Query);
+        if (callbackData is null)
         {
-            var callbackData = _vnPayService.ProcessCallback(Request.Query);
-            if (callbackData is null)
-            {
-                return Ok(new { RspCode = "97", Message = "Invalid data" });
-            }
-
-            var command = new ProcessVnPayIpnCommand(callbackData);
-            var result = await _sender.Send(command, cancellationToken);
-
-            if (result.IsFailure)
-            {
-                return Ok(new { RspCode = "99", Message = result.Error.Message });
-            }
-
-            return Ok(new
-            {
-                RspCode = result.Value.RspCode,
-                Message = result.Value.Message
-            });
+            return Results.Ok(new { RspCode = "97", Message = "Invalid data" });
         }
-        catch
-        {
-            return Ok(new { RspCode = "99", Message = "Server error" });
-        }
+
+        var command = new ProcessVnPayIpnCommand(callbackData);
+        var result = await _sender.Send(command, cancellationToken);
+        return result.MatchOk();
     }
 
     [HttpGet("vnpay-callback")]
-    public async Task<IActionResult> VnPayCallback(CancellationToken cancellationToken = default)
+    public async Task<IResult> VnPayCallback(CancellationToken cancellationToken = default)
     {
         var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:8081";
 
         var callbackData = _vnPayService.ProcessCallback(Request.Query);
         if (callbackData is null)
         {
-            return Redirect($"{frontendUrl}/orders/success?isSuccess=false&message=InvalidCallbackData");
+            return Results.Redirect($"{frontendUrl}/orders/success?isSuccess=false&message=InvalidCallbackData");
         }
 
         var command = new ProcessVnPayIpnCommand(callbackData);
@@ -73,26 +57,20 @@ public class PaymentController : ControllerBase
         var isSuccess = callbackData.IsSuccess;
         var redirectUrl = $"{frontendUrl}/orders/success?orderCode={callbackData.TxnRef}&total={callbackData.Amount}&isSuccess={isSuccess.ToString().ToLower()}";
 
-        return Redirect(redirectUrl);
+        return Results.Redirect(redirectUrl);
     }
 
     [HttpPost("momo-ipn")]
-    public async Task<IActionResult> ProcessMomoIpn(
+    public async Task<IResult> ProcessMomoIpn(
         [FromBody] ProcessMomoIpnCommand command,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(command, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(new { message = result.Error.Message });
-        }
-
-        return NoContent(); // Fast 204 response as required by MoMo IPN specification
+        return result.MatchOk();
     }
 
     [HttpGet("momo-return")]
-    public IActionResult ProcessMomoReturn(
+    public IResult ProcessMomoReturn(
         [FromQuery] string orderId,
         [FromQuery] int resultCode,
         [FromQuery] string message,
@@ -104,6 +82,6 @@ public class PaymentController : ControllerBase
         var totalAmount = amount ?? 0;
         var redirectUrl = $"{frontendUrl}/orders/success?orderCode={orderId}&total={totalAmount}&isSuccess={isSuccess.ToString().ToLower()}&message={Uri.EscapeDataString(message ?? "")}";
 
-        return Redirect(redirectUrl);
+        return Results.Redirect(redirectUrl);
     }
 }
