@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -9,13 +10,16 @@ namespace GymKitten.Application.Features.Catalog.Products.Commands.UpdateProduct
 public sealed class UpdateProductCommandHandler
     : ICommandHandler<UpdateProductCommand, Result<UpdateProductResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateProductCommandHandler(
+        IUserContext userContext,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
     }
@@ -24,6 +28,11 @@ public sealed class UpdateProductCommandHandler
         UpdateProductCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UpdateProductResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Get existing product via Repository
         var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product is null)

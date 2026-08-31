@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -10,15 +11,18 @@ namespace GymKitten.Application.Features.Catalog.ProductImages.Commands.DeletePr
 public sealed class DeleteProductImageCommandHandler
     : ICommandHandler<DeleteProductImageCommand, Result>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductImageRepository _productImageRepository;
     private readonly IStorageService _storageService;
     private readonly IUnitOfWork _unitOfWork;
 
     public DeleteProductImageCommandHandler(
+        IUserContext userContext,
         IProductImageRepository productImageRepository,
         IStorageService storageService,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productImageRepository = productImageRepository;
         _storageService = storageService;
         _unitOfWork = unitOfWork;
@@ -28,6 +32,11 @@ public sealed class DeleteProductImageCommandHandler
         DeleteProductImageCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure(UserErrors.Forbidden);
+        }
+
         // 1. Get image by ID via Repository
         var photo = await _productImageRepository.GetByIdAsync(request.ImageId, cancellationToken);
         if (photo is null)

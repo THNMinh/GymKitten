@@ -4,11 +4,13 @@ using GymKitten.Application.Features.Admin.Inventory.Commands.AdjustStock;
 using GymKitten.Application.Features.Admin.Inventory.Commands.Restock;
 using GymKitten.Application.Features.Admin.Inventory.Queries.GetInventory;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers.Admin;
 
 [ApiController]
+[Authorize(Roles = "Admin,admin")]
 [Route("api/admin/inventory")]
 public class AdminInventoryController : ControllerBase
 {

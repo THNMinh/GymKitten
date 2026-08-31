@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -9,13 +10,16 @@ namespace GymKitten.Application.Features.Catalog.Categories.Commands.DeleteCateg
 public sealed class DeleteCategoryCommandHandler
     : ICommandHandler<DeleteCategoryCommand, Result>
 {
+    private readonly IUserContext _userContext;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public DeleteCategoryCommandHandler(
+        IUserContext userContext,
         ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
     }
@@ -24,6 +28,11 @@ public sealed class DeleteCategoryCommandHandler
         DeleteCategoryCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure(UserErrors.Forbidden);
+        }
+
         var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
         if (category is null)
         {

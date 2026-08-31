@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -10,13 +11,16 @@ namespace GymKitten.Application.Features.Catalog.Categories.Commands.CreateCateg
 public sealed class CreateCategoryCommandHandler
     : ICommandHandler<CreateCategoryCommand, Result<CreateCategoryResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateCategoryCommandHandler(
+        IUserContext userContext,
         ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
     }
@@ -25,6 +29,11 @@ public sealed class CreateCategoryCommandHandler
         CreateCategoryCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<CreateCategoryResponse>(UserErrors.Forbidden);
+        }
+
         var parentCategoryId = (request.ParentCategoryId.HasValue && request.ParentCategoryId.Value != Guid.Empty)
             ? request.ParentCategoryId
             : null;

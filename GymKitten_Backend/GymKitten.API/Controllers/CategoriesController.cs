@@ -6,6 +6,7 @@ using GymKitten.Application.Features.Catalog.Categories.Commands.UpdateCategory;
 using GymKitten.Application.Features.Catalog.Categories.Queries.GetAllCategories;
 using GymKitten.Application.Features.Catalog.Categories.Queries.GetCategoryById;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers;
@@ -40,6 +41,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> CreateCategory(
         [FromBody] CreateCategoryRequest request,
         CancellationToken cancellationToken = default)
@@ -52,10 +54,12 @@ public class CategoriesController : ControllerBase
             request.DisplayOrder);
 
         var result = await _sender.Send(command, cancellationToken);
-        return result.MatchCreated(val => $"/api/categories/{val.CategoryId}");
+        // return result.MatchCreated(val => $"/api/categories/{val.CategoryId}");
+        return result.MatchOk();
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryRequest request,
@@ -74,6 +78,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> DeleteCategory(
         Guid id,
         CancellationToken cancellationToken = default)

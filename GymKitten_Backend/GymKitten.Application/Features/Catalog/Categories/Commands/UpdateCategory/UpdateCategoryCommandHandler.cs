@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -9,13 +10,16 @@ namespace GymKitten.Application.Features.Catalog.Categories.Commands.UpdateCateg
 public sealed class UpdateCategoryCommandHandler
     : ICommandHandler<UpdateCategoryCommand, Result<UpdateCategoryResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateCategoryCommandHandler(
+        IUserContext userContext,
         ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _categoryRepository = categoryRepository;
         _unitOfWork = unitOfWork;
     }
@@ -24,6 +28,11 @@ public sealed class UpdateCategoryCommandHandler
         UpdateCategoryCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UpdateCategoryResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Get existing category
         var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
         if (category is null)

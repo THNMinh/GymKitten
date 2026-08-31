@@ -30,7 +30,8 @@ public class AuthController : ControllerBase
             request.Password);
 
         var result = await _sender.Send(command, cancellationToken);
-        return result.MatchCreated(res => $"/api/users/{res.UserId}");
+        // return result.MatchCreated(res => $"/api/users/{res.UserId}");
+        return result.MatchOk();
     }
 
     [HttpPost("login")]

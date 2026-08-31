@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -10,17 +11,20 @@ namespace GymKitten.Application.Features.Admin.Inventory.Commands.Restock;
 public sealed class RestockCommandHandler
     : ICommandHandler<RestockCommand, Result<RestockCommandResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public RestockCommandHandler(
+        IUserContext userContext,
         IInventoryRepository inventoryRepository,
         IProductVariantRepository productVariantRepository,
         IInventoryTransactionRepository inventoryTransactionRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _inventoryRepository = inventoryRepository;
         _productVariantRepository = productVariantRepository;
         _inventoryTransactionRepository = inventoryTransactionRepository;
@@ -31,6 +35,11 @@ public sealed class RestockCommandHandler
         RestockCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<RestockCommandResponse>(UserErrors.Forbidden);
+        }
+
         var inventory = await _inventoryRepository.GetByVariantIdAsync(request.VariantId, cancellationToken);
 
         if (inventory is null)

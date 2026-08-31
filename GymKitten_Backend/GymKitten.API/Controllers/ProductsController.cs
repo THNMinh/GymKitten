@@ -7,6 +7,7 @@ using GymKitten.Application.Features.Catalog.Products.Queries.GetAllProducts;
 using GymKitten.Application.Features.Catalog.Products.Queries.GetProductById;
 using GymKitten.Application.Features.Catalog.Products.Queries.GetProductBySlug;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers;
@@ -50,6 +51,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> CreateProduct(
         [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken = default)
@@ -63,10 +65,12 @@ public class ProductsController : ControllerBase
             request.Gender);
 
         var result = await _sender.Send(command, cancellationToken);
-        return result.MatchCreated(val => $"/api/products/{val.ProductId}");
+        // return result.MatchCreated(val => $"/api/products/{val.ProductId}");
+        return result.MatchOk();
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> UpdateProduct(
         Guid id,
         [FromBody] UpdateProductRequest request,
@@ -87,6 +91,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> DeleteProduct(
         Guid id,
         CancellationToken cancellationToken = default)

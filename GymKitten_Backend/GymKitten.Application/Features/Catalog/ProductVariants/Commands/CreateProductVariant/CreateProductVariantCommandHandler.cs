@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -10,17 +11,20 @@ namespace GymKitten.Application.Features.Catalog.ProductVariants.Commands.Create
 public sealed class CreateProductVariantCommandHandler
     : ICommandHandler<CreateProductVariantCommand, Result<CreateProductVariantResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductRepository _productRepository;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateProductVariantCommandHandler(
+        IUserContext userContext,
         IProductRepository productRepository,
         IProductVariantRepository productVariantRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productRepository = productRepository;
         _productVariantRepository = productVariantRepository;
         _inventoryRepository = inventoryRepository;
@@ -31,6 +35,11 @@ public sealed class CreateProductVariantCommandHandler
         CreateProductVariantCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<CreateProductVariantResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Verify parent product exists
         var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product is null)

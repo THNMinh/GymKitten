@@ -38,6 +38,10 @@ public static class CustomResults
             errorCode.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase))
             return StatusCodes.Status401Unauthorized;
 
+        if (errorCode.Contains("Forbidden", StringComparison.OrdinalIgnoreCase) ||
+            errorCode.Contains("AccessDenied", StringComparison.OrdinalIgnoreCase))
+            return StatusCodes.Status403Forbidden;
+
         return StatusCodes.Status400BadRequest;
     }
 
@@ -46,6 +50,7 @@ public static class CustomResults
         {
             StatusCodes.Status400BadRequest => "Bad Request",
             StatusCodes.Status401Unauthorized => "Unauthorized",
+            StatusCodes.Status403Forbidden => "Forbidden",
             StatusCodes.Status404NotFound => "Not Found",
             StatusCodes.Status409Conflict => "Conflict",
             _ => "An error occurred"
