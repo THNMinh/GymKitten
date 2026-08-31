@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -11,15 +12,18 @@ namespace GymKitten.Application.Features.Catalog.ProductImages.Commands.UploadPr
 public sealed class UploadProductImagesCommandHandler
     : ICommandHandler<UploadProductImagesCommand, Result<UploadProductImagesResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductImageRepository _productImageRepository;
     private readonly IStorageService _storageService;
     private readonly IUnitOfWork _unitOfWork;
 
     public UploadProductImagesCommandHandler(
+        IUserContext userContext,
         IProductImageRepository productImageRepository,
         IStorageService storageService,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productImageRepository = productImageRepository;
         _storageService = storageService;
         _unitOfWork = unitOfWork;
@@ -29,6 +33,11 @@ public sealed class UploadProductImagesCommandHandler
         UploadProductImagesCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UploadProductImagesResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Verify product exists
         var productExists = await _productImageRepository.ProductExistsAsync(request.ProductId, cancellationToken);
         if (!productExists)

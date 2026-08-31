@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -9,13 +10,16 @@ namespace GymKitten.Application.Features.Catalog.ProductVariants.Commands.Delete
 public sealed class DeleteProductVariantCommandHandler
     : ICommandHandler<DeleteProductVariantCommand, Result>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public DeleteProductVariantCommandHandler(
+        IUserContext userContext,
         IProductVariantRepository productVariantRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productVariantRepository = productVariantRepository;
         _unitOfWork = unitOfWork;
     }
@@ -24,6 +28,11 @@ public sealed class DeleteProductVariantCommandHandler
         DeleteProductVariantCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure(UserErrors.Forbidden);
+        }
+
         var variant = await _productVariantRepository.GetByIdAsync(request.VariantId, cancellationToken);
         if (variant is null)
         {

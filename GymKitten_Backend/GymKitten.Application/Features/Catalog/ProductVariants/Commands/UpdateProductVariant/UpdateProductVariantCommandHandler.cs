@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -9,13 +10,16 @@ namespace GymKitten.Application.Features.Catalog.ProductVariants.Commands.Update
 public sealed class UpdateProductVariantCommandHandler
     : ICommandHandler<UpdateProductVariantCommand, Result<UpdateProductVariantResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateProductVariantCommandHandler(
+        IUserContext userContext,
         IProductVariantRepository productVariantRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productVariantRepository = productVariantRepository;
         _unitOfWork = unitOfWork;
     }
@@ -24,6 +28,11 @@ public sealed class UpdateProductVariantCommandHandler
         UpdateProductVariantCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UpdateProductVariantResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Fetch variant
         var variant = await _productVariantRepository.GetByIdAsync(request.VariantId, cancellationToken);
         if (variant is null)

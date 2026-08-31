@@ -3,6 +3,7 @@ using GymKitten.Application.Features.Catalog.ProductImages.Commands.DeleteProduc
 using GymKitten.Application.Features.Catalog.ProductImages.Commands.UploadProductImages;
 using GymKitten.Application.Features.Catalog.ProductImages.Queries.GetProductImagesByProduct;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers;
@@ -28,6 +29,7 @@ public class ProductImagesController : ControllerBase
     }
 
     [HttpPost("{productId:guid}/images")]
+    [Authorize(Roles = "Admin,admin")]
     [Consumes("multipart/form-data")]
     public async Task<IResult> UploadProductImages(
         Guid productId,
@@ -37,10 +39,12 @@ public class ProductImagesController : ControllerBase
     {
         var command = new UploadProductImagesCommand(productId, variantId, photos);
         var result = await _sender.Send(command, cancellationToken);
-        return result.MatchCreated(val => $"/api/products/{val.ProductId}/images");
+        // return result.MatchCreated(val => $"/api/products/{val.ProductId}/images");
+        return result.MatchOk();
     }
 
     [HttpDelete("images/{imageId:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> DeleteProductImage(
         Guid imageId,
         CancellationToken cancellationToken = default)

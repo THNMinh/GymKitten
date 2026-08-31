@@ -1,16 +1,22 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Domain.Common;
+using GymKitten.Domain.Errors;
 
 namespace GymKitten.Application.Features.Admin.Inventory.Queries.GetInventory;
 
 public sealed class GetInventoryQueryHandler
     : IQueryHandler<GetInventoryQuery, Result<GetInventoryResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IInventoryRepository _inventoryRepository;
 
-    public GetInventoryQueryHandler(IInventoryRepository inventoryRepository)
+    public GetInventoryQueryHandler(
+        IUserContext userContext,
+        IInventoryRepository inventoryRepository)
     {
+        _userContext = userContext;
         _inventoryRepository = inventoryRepository;
     }
 
@@ -18,6 +24,11 @@ public sealed class GetInventoryQueryHandler
         GetInventoryQuery request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<GetInventoryResponse>(UserErrors.Forbidden);
+        }
+
         var page = request.Page <= 0 ? 1 : request.Page;
         var pageSize = request.PageSize <= 0 ? 20 : request.PageSize;
 

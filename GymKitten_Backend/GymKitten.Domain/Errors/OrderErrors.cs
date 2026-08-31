@@ -31,4 +31,12 @@ public static class OrderErrors
     public static readonly Error AlreadyShipped = new(
         "Order.AlreadyShipped",
         "The order has already been shipped.");
+
+    public static readonly Error CannotCancelNonPendingOrder = new(
+        "Order.CannotCancelNonPendingOrder",
+        "Only pending orders can be cancelled by the customer.");
+
+    public static readonly Error AccessDenied = new(
+        "Order.AccessDenied",
+        "You do not have permission to access or modify this order.");
 }

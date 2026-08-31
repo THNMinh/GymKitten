@@ -1,3 +1,4 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
@@ -10,13 +11,16 @@ namespace GymKitten.Application.Features.Catalog.Products.Commands.CreateProduct
 public sealed class CreateProductCommandHandler
     : ICommandHandler<CreateProductCommand, Result<CreateProductResponse>>
 {
+    private readonly IUserContext _userContext;
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateProductCommandHandler(
+        IUserContext userContext,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork)
     {
+        _userContext = userContext;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
     }
@@ -25,6 +29,11 @@ public sealed class CreateProductCommandHandler
         CreateProductCommand request,
         CancellationToken cancellationToken)
     {
+        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<CreateProductResponse>(UserErrors.Forbidden);
+        }
+
         // 1. Verify slug uniqueness via Repository
         var slugExists = await _productRepository.ExistsBySlugAsync(request.Slug, cancellationToken);
 

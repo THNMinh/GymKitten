@@ -5,6 +5,7 @@ using GymKitten.Application.Features.Catalog.ProductVariants.Commands.DeleteProd
 using GymKitten.Application.Features.Catalog.ProductVariants.Commands.UpdateProductVariant;
 using GymKitten.Application.Features.Catalog.ProductVariants.Queries.GetVariantsByProductId;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers;
@@ -30,6 +31,7 @@ public class ProductVariantsController : ControllerBase
     }
 
     [HttpPost("variants")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> CreateProductVariant(
         [FromBody] CreateProductVariantRequest request,
         CancellationToken cancellationToken = default)
@@ -45,10 +47,12 @@ public class ProductVariantsController : ControllerBase
             request.WeightGrams);
 
         var result = await _sender.Send(command, cancellationToken);
-        return result.MatchCreated(val => $"/api/products/variants/{val.VariantId}");
+        // return result.MatchCreated(val => $"/api/products/variants/{val.VariantId}");
+        return result.MatchOk();
     }
 
     [HttpPut("variants/{variantId:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> UpdateProductVariant(
         Guid variantId,
         [FromBody] UpdateProductVariantRequest request,
@@ -69,6 +73,7 @@ public class ProductVariantsController : ControllerBase
     }
 
     [HttpDelete("variants/{variantId:guid}")]
+    [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> DeleteProductVariant(
         Guid variantId,
         CancellationToken cancellationToken = default)

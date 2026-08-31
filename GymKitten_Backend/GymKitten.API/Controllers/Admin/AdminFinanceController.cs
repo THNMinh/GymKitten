@@ -1,11 +1,13 @@
 using GymKitten.API.Extensions;
 using GymKitten.Application.Features.Admin.Finance.Queries.GetTransactions;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymKitten.API.Controllers.Admin;
 
 [ApiController]
+[Authorize(Roles = "Admin,admin")]
 [Route("api/admin/finance")]
 public class AdminFinanceController : ControllerBase
 {
