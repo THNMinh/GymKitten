@@ -31,19 +31,31 @@ public sealed class GetOrderByIdQueryHandler
         }
 
         // Security check: verify ownership if not admin/system
-        if (order.Userid.HasValue && order.Userid != _userContext.UserId)
+        if (order.Userid.HasValue && order.Userid != _userContext.UserId &&
+            !string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return Result.Failure<OrderDetailDto>(OrderErrors.AccessDenied);
         }
 
-        var items = order.Orderitems.Select(i => new OrderItemDto(
-            i.Orderitemid,
-            i.Variantid,
-            i.Sku,
-            i.Productname,
-            i.Unitprice,
-            i.Quantity,
-            i.Totalprice)).ToList();
+        var items = order.Orderitems.Select(i =>
+        {
+            var variantImage = i.Variant?.Productimages
+                ?.Where(img => img.Variantid == i.Variantid)
+                .OrderByDescending(img => img.Isprimary)
+                .ThenBy(img => img.Displayorder)
+                .ThenBy(img => img.Createdat)
+                .FirstOrDefault()?.Imageurl;
+
+            return new OrderItemDto(
+                i.Orderitemid,
+                i.Variantid,
+                i.Sku,
+                i.Productname,
+                i.Unitprice,
+                i.Quantity,
+                i.Totalprice,
+                variantImage);
+        }).ToList();
 
         var dto = new OrderDetailDto(
             order.Orderid,

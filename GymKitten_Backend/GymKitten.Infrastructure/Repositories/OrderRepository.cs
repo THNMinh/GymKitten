@@ -31,6 +31,8 @@ public sealed class OrderRepository : IOrderRepository
         return await _context.Orders
             .AsNoTracking()
             .Include(o => o.Orderitems)
+                .ThenInclude(i => i.Variant)
+                    .ThenInclude(v => v.Productimages)
             .Include(o => o.Ordertrackinghistories)
             .Include(o => o.Paymenttransactions)
             .FirstOrDefaultAsync(o => o.Orderid == orderId, cancellationToken);
@@ -46,6 +48,8 @@ public sealed class OrderRepository : IOrderRepository
         var query = _context.Orders
             .AsNoTracking()
             .Include(o => o.Orderitems)
+                .ThenInclude(i => i.Variant)
+                    .ThenInclude(v => v.Productimages)
             .Where(o => o.Userid == userId);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -80,6 +84,8 @@ public sealed class OrderRepository : IOrderRepository
             .AsNoTracking()
             .Include(o => o.User)
             .Include(o => o.Orderitems)
+                .ThenInclude(i => i.Variant)
+                    .ThenInclude(v => v.Productimages)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(orderCode))
