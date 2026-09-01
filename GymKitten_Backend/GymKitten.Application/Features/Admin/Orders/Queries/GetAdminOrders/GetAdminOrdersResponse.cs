@@ -1,3 +1,5 @@
+using GymKitten.Application.Features.Order.Queries.GetOrderById;
+
 namespace GymKitten.Application.Features.Admin.Orders.Queries.GetAdminOrders;
 
 public sealed record GetAdminOrdersResponse(
@@ -16,4 +18,5 @@ public sealed record AdminOrderSummaryDto(
     string PaymentMethod,
     string PaymentStatus,
     DateTime CreatedAt,
-    int TotalItems);
+    int TotalItems,
+    List<OrderItemDto> Items);

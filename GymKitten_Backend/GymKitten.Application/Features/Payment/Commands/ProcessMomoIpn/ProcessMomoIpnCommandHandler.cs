@@ -3,6 +3,8 @@ using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
+using GymKitten.Domain.Entities;
+using GymKitten.Domain.Enums;
 using GymKitten.Domain.Errors;
 
 namespace GymKitten.Application.Features.Payment.Commands.ProcessMomoIpn;
@@ -14,6 +16,7 @@ public sealed class ProcessMomoIpnCommandHandler
     private readonly IPaymentTransactionRepository _paymentTransactionRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IOrderTrackingRepository _orderTrackingRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProcessMomoIpnCommandHandler(
@@ -21,12 +24,14 @@ public sealed class ProcessMomoIpnCommandHandler
         IPaymentTransactionRepository paymentTransactionRepository,
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
+        IOrderTrackingRepository orderTrackingRepository,
         IUnitOfWork unitOfWork)
     {
         _momoService = momoService;
         _paymentTransactionRepository = paymentTransactionRepository;
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
+        _orderTrackingRepository = orderTrackingRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -91,6 +96,22 @@ public sealed class ProcessMomoIpnCommandHandler
                 order.Currentstatus = "Processing";
                 order.Updatedat = DateTime.UtcNow;
                 _orderRepository.Update(order);
+
+                // Add Order Tracking Timeline History
+                var tracking = new Ordertrackinghistory
+                {
+                    Trackingid = Guid.NewGuid(),
+                    Orderid = order.Orderid,
+                    Status = OrderStatusExtensions.Processing,
+                    Title = "Thanh toán MoMo thành công",
+                    Description = "Hệ thống đã nhận thanh toán thành công qua ví MoMo.",
+                    Location = "Cổng thanh toán MoMo",
+                    Timestamp = DateTime.UtcNow,
+                    Updatedby = "System/MoMo",
+                    Createdat = DateTime.UtcNow,
+                    Updatedat = DateTime.UtcNow
+                };
+                await _orderTrackingRepository.AddAsync(tracking, cancellationToken);
             }
         }
         else
@@ -120,6 +141,22 @@ public sealed class ProcessMomoIpnCommandHandler
                         _inventoryRepository.Update(inventory);
                     }
                 }
+
+                // Add Order Tracking Timeline History
+                var tracking = new Ordertrackinghistory
+                {
+                    Trackingid = Guid.NewGuid(),
+                    Orderid = order.Orderid,
+                    Status = OrderStatusExtensions.Cancelled,
+                    Title = "Thanh toán MoMo thất bại",
+                    Description = string.IsNullOrWhiteSpace(request.Message) ? "Giao dịch qua MoMo không thành công." : request.Message,
+                    Location = "Cổng thanh toán MoMo",
+                    Timestamp = DateTime.UtcNow,
+                    Updatedby = "System/MoMo",
+                    Createdat = DateTime.UtcNow,
+                    Updatedat = DateTime.UtcNow
+                };
+                await _orderTrackingRepository.AddAsync(tracking, cancellationToken);
             }
         }
 

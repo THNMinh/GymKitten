@@ -1,6 +1,7 @@
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Features.Order.Queries.GetOrderById;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Errors;
 
@@ -41,16 +42,40 @@ public sealed class GetAdminOrdersQueryHandler
             pageSize,
             cancellationToken);
 
-        var dtos = items.Select(o => new AdminOrderSummaryDto(
-            o.Orderid,
-            o.Ordercode,
-            o.User != null ? o.User.Email : "Guest",
-            o.Totalamount,
-            o.Currentstatus,
-            o.Paymentmethod,
-            o.Paymentstatus,
-            o.Createdat,
-            o.Orderitems.Count)).ToList();
+        var dtos = items.Select(o =>
+        {
+            var orderItemDtos = o.Orderitems.Select(i =>
+            {
+                var variantImage = i.Variant?.Productimages
+                    ?.Where(img => img.Variantid == i.Variantid)
+                    .OrderByDescending(img => img.Isprimary)
+                    .ThenBy(img => img.Displayorder)
+                    .ThenBy(img => img.Createdat)
+                    .FirstOrDefault()?.Imageurl;
+
+                return new OrderItemDto(
+                    i.Orderitemid,
+                    i.Variantid,
+                    i.Sku,
+                    i.Productname,
+                    i.Unitprice,
+                    i.Quantity,
+                    i.Totalprice,
+                    variantImage);
+            }).ToList();
+
+            return new AdminOrderSummaryDto(
+                o.Orderid,
+                o.Ordercode,
+                o.User != null ? o.User.Email : "Guest",
+                o.Totalamount,
+                o.Currentstatus,
+                o.Paymentmethod,
+                o.Paymentstatus,
+                o.Createdat,
+                o.Orderitems.Count,
+                orderItemDtos);
+        }).ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
