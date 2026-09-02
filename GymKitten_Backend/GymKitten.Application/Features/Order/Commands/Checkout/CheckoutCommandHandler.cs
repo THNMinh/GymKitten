@@ -18,6 +18,7 @@ public sealed class CheckoutCommandHandler
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentTransactionRepository _paymentTransactionRepository;
+    private readonly ICouponRepository _couponRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IVnPayService _vnPayService;
     private readonly IMomoService _momoService;
@@ -29,6 +30,7 @@ public sealed class CheckoutCommandHandler
         IInventoryRepository inventoryRepository,
         IOrderRepository orderRepository,
         IPaymentTransactionRepository paymentTransactionRepository,
+        ICouponRepository couponRepository,
         IUnitOfWork unitOfWork,
         IVnPayService vnPayService,
         IMomoService momoService,
@@ -39,6 +41,7 @@ public sealed class CheckoutCommandHandler
         _inventoryRepository = inventoryRepository;
         _orderRepository = orderRepository;
         _paymentTransactionRepository = paymentTransactionRepository;
+        _couponRepository = couponRepository;
         _unitOfWork = unitOfWork;
         _vnPayService = vnPayService;
         _momoService = momoService;
@@ -82,7 +85,7 @@ public sealed class CheckoutCommandHandler
         }
 
         // 3. Create Order & Items
-        decimal totalAmount = 0;
+        decimal subtotal = 0;
         var orderItems = new List<Orderitem>();
         var orderId = Guid.NewGuid();
         var orderCode = $"GK-{DateTime.UtcNow:yyMMddHHmmss}-{Random.Shared.Next(100, 999)}";
@@ -96,7 +99,7 @@ public sealed class CheckoutCommandHandler
             }
 
             var itemTotal = variant.Price * item.Quantity;
-            totalAmount += itemTotal;
+            subtotal += itemTotal;
 
             orderItems.Add(new Orderitem
             {
@@ -113,6 +116,56 @@ public sealed class CheckoutCommandHandler
             });
         }
 
+        // 4. Validate and apply coupon discount if provided
+        decimal discountAmount = 0;
+        Coupon? appliedCoupon = null;
+
+        if (!string.IsNullOrWhiteSpace(request.CouponCode))
+        {
+            var now = DateTime.UtcNow;
+            appliedCoupon = await _couponRepository.GetByCodeAsync(request.CouponCode, cancellationToken);
+
+            if (appliedCoupon is null || appliedCoupon.Deletedat != null)
+            {
+                return Result.Failure<CheckoutCommandResponse>(CouponErrors.NotFound);
+            }
+
+            if (!appliedCoupon.Isactive)
+            {
+                return Result.Failure<CheckoutCommandResponse>(CouponErrors.Inactive);
+            }
+
+            if (now < appliedCoupon.Startdate || now > appliedCoupon.Enddate)
+            {
+                return Result.Failure<CheckoutCommandResponse>(CouponErrors.Expired);
+            }
+
+            if (appliedCoupon.Usagelimit.HasValue && appliedCoupon.Usedcount >= appliedCoupon.Usagelimit.Value)
+            {
+                return Result.Failure<CheckoutCommandResponse>(CouponErrors.UsageLimitReached);
+            }
+
+            if (subtotal < appliedCoupon.Minordervalue)
+            {
+                return Result.Failure<CheckoutCommandResponse>(CouponErrors.MinOrderValueNotMet);
+            }
+
+            if (appliedCoupon.Discounttype.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+            {
+                var calc = subtotal * (appliedCoupon.Discountvalue / 100m);
+                if (appliedCoupon.Maxdiscountamount.HasValue)
+                {
+                    calc = Math.Min(calc, appliedCoupon.Maxdiscountamount.Value);
+                }
+                discountAmount = Math.Round(calc, 2);
+            }
+            else if (appliedCoupon.Discounttype.Equals("FixedAmount", StringComparison.OrdinalIgnoreCase))
+            {
+                discountAmount = Math.Min(subtotal, appliedCoupon.Discountvalue);
+            }
+        }
+
+        decimal finalTotalAmount = Math.Max(0, subtotal - discountAmount);
         var paymentMethodUpper = request.PaymentMethod.Trim().ToUpper();
 
         var order = new Domain.Entities.Order
@@ -121,10 +174,10 @@ public sealed class CheckoutCommandHandler
             Ordercode = orderCode,
             Userid = _userContext.UserId,
             Shippingaddress = request.ShippingAddress,
-            Subtotal = totalAmount,
+            Subtotal = subtotal,
             Shippingfee = 0,
-            Discountamount = 0,
-            Totalamount = totalAmount,
+            Discountamount = discountAmount,
+            Totalamount = finalTotalAmount,
             Currentstatus = "Pending",
             Paymentmethod = paymentMethodUpper,
             Paymentstatus = "Unpaid",
@@ -135,6 +188,26 @@ public sealed class CheckoutCommandHandler
         };
 
         await _orderRepository.AddAsync(order, cancellationToken);
+
+        // Record coupon usage & update coupon count if applied
+        if (appliedCoupon != null)
+        {
+            appliedCoupon.Usedcount += 1;
+            appliedCoupon.Updatedat = DateTime.UtcNow;
+            _couponRepository.Update(appliedCoupon);
+
+            var couponUsage = new Couponusage
+            {
+                Usageid = Guid.NewGuid(),
+                Couponid = appliedCoupon.Couponid,
+                Userid = _userContext.UserId ?? Guid.Empty,
+                Orderid = orderId,
+                Usedat = DateTime.UtcNow,
+                Createdat = DateTime.UtcNow,
+                Updatedat = DateTime.UtcNow
+            };
+            await _couponRepository.AddUsageAsync(couponUsage, cancellationToken);
+        }
 
         string? paymentUrl = null;
 

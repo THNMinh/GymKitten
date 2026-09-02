@@ -33,7 +33,7 @@ public sealed class GetProductReviewsQueryHandler
         var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
 
         var (items, totalCount, avgRating, ratingBreakdown, fitFeedback) =
-            await _reviewRepository.GetProductReviewsPagedAsync(
+            await _reviewRepository.SearchProductReviewsAsync(
                 request.ProductId,
                 request.Rating,
                 request.HasMedia,

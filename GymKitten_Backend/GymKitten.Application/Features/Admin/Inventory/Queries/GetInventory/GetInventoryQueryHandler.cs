@@ -32,7 +32,7 @@ public sealed class GetInventoryQueryHandler
         var page = request.Page <= 0 ? 1 : request.Page;
         var pageSize = request.PageSize <= 0 ? 20 : request.PageSize;
 
-        var (items, totalCount) = await _inventoryRepository.GetInventoryPagedAsync(
+        var (items, totalCount) = await _inventoryRepository.SearchInventoryAsync(
             request.Sku,
             request.ProductName,
             page,
@@ -42,7 +42,7 @@ public sealed class GetInventoryQueryHandler
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
         var response = new GetInventoryResponse(
-            items,
+            items.ToList(),
             totalCount,
             page,
             pageSize,

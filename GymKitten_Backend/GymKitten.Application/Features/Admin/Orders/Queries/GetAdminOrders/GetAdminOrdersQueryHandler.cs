@@ -33,7 +33,7 @@ public sealed class GetAdminOrdersQueryHandler
         var page = request.Page <= 0 ? 1 : request.Page;
         var pageSize = request.PageSize <= 0 ? 20 : request.PageSize;
 
-        var (items, totalCount) = await _orderRepository.GetAdminOrdersPagedAsync(
+        var (items, totalCount) = await _orderRepository.SearchAdminOrdersAsync(
             request.OrderCode,
             request.Status,
             request.StartDate,

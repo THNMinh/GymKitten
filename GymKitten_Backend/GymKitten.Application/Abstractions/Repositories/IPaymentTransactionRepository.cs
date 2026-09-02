@@ -11,7 +11,7 @@ public interface IPaymentTransactionRepository
 
     Task<Paymenttransaction?> GetByOrderIdAndGatewayAsync(Guid orderId, string gateway, CancellationToken cancellationToken = default);
 
-    Task<(List<TransactionDto> Items, int TotalCount)> GetTransactionsPagedAsync(
+    Task<(IEnumerable<TransactionDto> Items, int TotalCount)> SearchTransactionsAsync(
         DateTime? startDate,
         DateTime? endDate,
         string? status,

@@ -8,4 +8,5 @@ public sealed record CheckoutRequest(
     List<CheckoutItemRequest> Items,
     string ShippingAddress,
     string PaymentMethod,
-    string? CustomerNote);
+    string? CustomerNote,
+    string? CouponCode = null);

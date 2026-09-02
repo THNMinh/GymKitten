@@ -32,7 +32,7 @@ public sealed class GetTransactionsQueryHandler
         var page = request.Page <= 0 ? 1 : request.Page;
         var pageSize = request.PageSize <= 0 ? 20 : request.PageSize;
 
-        var (items, totalCount) = await _paymentTransactionRepository.GetTransactionsPagedAsync(
+        var (items, totalCount) = await _paymentTransactionRepository.SearchTransactionsAsync(
             request.StartDate,
             request.EndDate,
             request.Status,
@@ -44,7 +44,7 @@ public sealed class GetTransactionsQueryHandler
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
         var response = new GetTransactionsResponse(
-            items,
+            items.ToList(),
             totalCount,
             page,
             pageSize,

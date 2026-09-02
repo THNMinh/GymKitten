@@ -38,7 +38,7 @@ public sealed class OrderRepository : IOrderRepository
             .FirstOrDefaultAsync(o => o.Orderid == orderId, cancellationToken);
     }
 
-    public async Task<(List<Order> Items, int TotalCount)> GetMyOrdersPagedAsync(
+    public async Task<(IEnumerable<Order> Items, int TotalCount)> SearchMyOrdersAsync(
         Guid userId,
         string? status,
         int page,
@@ -71,7 +71,7 @@ public sealed class OrderRepository : IOrderRepository
         return (items, totalCount);
     }
 
-    public async Task<(List<Order> Items, int TotalCount)> GetAdminOrdersPagedAsync(
+    public async Task<(IEnumerable<Order> Items, int TotalCount)> SearchAdminOrdersAsync(
         string? orderCode,
         string? status,
         DateTime? startDate,

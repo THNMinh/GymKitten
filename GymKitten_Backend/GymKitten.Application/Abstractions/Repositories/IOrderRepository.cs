@@ -10,14 +10,14 @@ public interface IOrderRepository
 
     Task<Order?> GetByIdWithDetailsAsync(Guid orderId, CancellationToken cancellationToken = default);
 
-    Task<(List<Order> Items, int TotalCount)> GetMyOrdersPagedAsync(
+    Task<(IEnumerable<Order> Items, int TotalCount)> SearchMyOrdersAsync(
         Guid userId,
         string? status,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
 
-    Task<(List<Order> Items, int TotalCount)> GetAdminOrdersPagedAsync(
+    Task<(IEnumerable<Order> Items, int TotalCount)> SearchAdminOrdersAsync(
         string? orderCode,
         string? status,
         DateTime? startDate,

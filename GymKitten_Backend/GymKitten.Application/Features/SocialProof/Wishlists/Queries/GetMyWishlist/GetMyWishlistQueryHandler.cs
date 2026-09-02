@@ -30,7 +30,7 @@ public sealed class GetMyWishlistQueryHandler
         }
 
         // Count First, Take Later via Repository
-        var (wishlists, total) = await _wishlistRepository.GetWishlistByUserIdAsync(
+        var (wishlists, total) = await _wishlistRepository.SearchWishlistByUserIdAsync(
             _userContext.UserId.Value,
             request.Page,
             request.PageSize,

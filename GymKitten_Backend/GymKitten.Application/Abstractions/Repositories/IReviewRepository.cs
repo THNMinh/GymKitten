@@ -12,7 +12,7 @@ public interface IReviewRepository
 
     Task<bool> ExistsByOrderAndProductAsync(Guid orderId, Guid productId, CancellationToken cancellationToken = default);
 
-    Task<(List<Productreview> Items, int TotalCount, double AverageRating, RatingBreakdownData RatingBreakdown, FitFeedbackData FitFeedbackSummary)> GetProductReviewsPagedAsync(
+    Task<(IEnumerable<Productreview> Items, int TotalCount, double AverageRating, RatingBreakdownData RatingBreakdown, FitFeedbackData FitFeedbackSummary)> SearchProductReviewsAsync(
         Guid productId,
         int? rating,
         bool? hasMedia,
@@ -20,7 +20,7 @@ public interface IReviewRepository
         int pageSize,
         CancellationToken cancellationToken = default);
 
-    Task<(List<Productreview> Items, int TotalCount)> GetAdminReviewsPagedAsync(
+    Task<(IEnumerable<Productreview> Items, int TotalCount)> SearchAdminReviewsAsync(
         Guid? productId,
         int? rating,
         int page,

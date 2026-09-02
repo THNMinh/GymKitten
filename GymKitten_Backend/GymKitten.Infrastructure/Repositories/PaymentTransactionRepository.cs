@@ -44,7 +44,7 @@ public sealed class PaymentTransactionRepository : IPaymentTransactionRepository
             .FirstOrDefaultAsync(t => t.Orderid == orderId && t.Gateway.ToLower() == gatewayTerm, cancellationToken);
     }
 
-    public async Task<(List<TransactionDto> Items, int TotalCount)> GetTransactionsPagedAsync(
+    public async Task<(IEnumerable<TransactionDto> Items, int TotalCount)> SearchTransactionsAsync(
         DateTime? startDate,
         DateTime? endDate,
         string? status,

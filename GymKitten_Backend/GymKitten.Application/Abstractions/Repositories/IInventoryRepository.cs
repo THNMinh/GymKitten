@@ -9,7 +9,7 @@ public interface IInventoryRepository
 
     Task<List<Inventoryitem>> GetByVariantIdsAsync(IEnumerable<Guid> variantIds, CancellationToken cancellationToken = default);
 
-    Task<(List<InventoryItemDto> Items, int TotalCount)> GetInventoryPagedAsync(
+    Task<(IEnumerable<InventoryItemDto> Items, int TotalCount)> SearchInventoryAsync(
         string? sku,
         string? productName,
         int page,

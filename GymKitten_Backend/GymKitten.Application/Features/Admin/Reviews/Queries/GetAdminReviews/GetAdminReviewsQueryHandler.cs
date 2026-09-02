@@ -32,7 +32,7 @@ public sealed class GetAdminReviewsQueryHandler
         var page = request.Page <= 0 ? 1 : request.Page;
         var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
 
-        var (items, totalCount) = await _reviewRepository.GetAdminReviewsPagedAsync(
+        var (items, totalCount) = await _reviewRepository.SearchAdminReviewsAsync(
             request.ProductId,
             request.Rating,
             page,

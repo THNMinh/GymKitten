@@ -28,7 +28,7 @@ public sealed class InventoryRepository : IInventoryRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<(List<InventoryItemDto> Items, int TotalCount)> GetInventoryPagedAsync(
+    public async Task<(IEnumerable<InventoryItemDto> Items, int TotalCount)> SearchInventoryAsync(
         string? sku,
         string? productName,
         int page,

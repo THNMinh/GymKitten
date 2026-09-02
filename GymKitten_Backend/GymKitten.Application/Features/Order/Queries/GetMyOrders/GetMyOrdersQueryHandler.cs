@@ -32,7 +32,7 @@ public sealed class GetMyOrdersQueryHandler
             return Result.Success(new GetMyOrdersResponse(new List<OrderSummaryDto>(), 0, page, pageSize, 0));
         }
 
-        var (items, totalCount) = await _orderRepository.GetMyOrdersPagedAsync(
+        var (items, totalCount) = await _orderRepository.SearchMyOrdersAsync(
             _userContext.UserId.Value,
             request.Status,
             page,

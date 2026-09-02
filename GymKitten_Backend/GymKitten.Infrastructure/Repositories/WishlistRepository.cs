@@ -55,7 +55,7 @@ public sealed class WishlistRepository : IWishlistRepository
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    public async Task<(IEnumerable<Wishlist> Wishlists, int Total)> GetWishlistByUserIdAsync(
+    public async Task<(IEnumerable<Wishlist> Wishlists, int Total)> SearchWishlistByUserIdAsync(
         Guid userId,
         int page,
         int pageSize,

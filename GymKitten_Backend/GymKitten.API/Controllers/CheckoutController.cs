@@ -28,7 +28,8 @@ public class CheckoutController : ControllerBase
             request.Items.Select(i => new CheckoutItemDto(i.VariantId, i.Quantity)).ToList(),
             request.ShippingAddress,
             request.PaymentMethod,
-            request.CustomerNote);
+            request.CustomerNote,
+            request.CouponCode);
 
         var result = await _sender.Send(command, cancellationToken);
         return result.MatchOk();

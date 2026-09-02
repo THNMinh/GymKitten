@@ -10,7 +10,7 @@ public interface IWishlistRepository
 
     Task<int> ExecuteHardDeleteAsync(Guid userId, Guid productId, CancellationToken cancellationToken = default);
 
-    Task<(IEnumerable<Wishlist> Wishlists, int Total)> GetWishlistByUserIdAsync(
+    Task<(IEnumerable<Wishlist> Wishlists, int Total)> SearchWishlistByUserIdAsync(
         Guid userId,
         int page,
         int pageSize,

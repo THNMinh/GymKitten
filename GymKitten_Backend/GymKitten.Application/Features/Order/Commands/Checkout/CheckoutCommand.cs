@@ -7,4 +7,5 @@ public sealed record CheckoutCommand(
     List<CheckoutItemDto> Items,
     string ShippingAddress,
     string PaymentMethod,
-    string? CustomerNote = null) : ICommand<Result<CheckoutCommandResponse>>;
+    string? CustomerNote = null,
+    string? CouponCode = null) : ICommand<Result<CheckoutCommandResponse>>;

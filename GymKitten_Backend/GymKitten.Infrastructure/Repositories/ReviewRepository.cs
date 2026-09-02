@@ -41,7 +41,7 @@ public sealed class ReviewRepository : IReviewRepository
             .AnyAsync(r => r.Orderid == orderId && r.Productid == productId, cancellationToken);
     }
 
-    public async Task<(List<Productreview> Items, int TotalCount, double AverageRating, RatingBreakdownData RatingBreakdown, FitFeedbackData FitFeedbackSummary)> GetProductReviewsPagedAsync(
+    public async Task<(IEnumerable<Productreview> Items, int TotalCount, double AverageRating, RatingBreakdownData RatingBreakdown, FitFeedbackData FitFeedbackSummary)> SearchProductReviewsAsync(
         Guid productId,
         int? rating,
         bool? hasMedia,
@@ -111,7 +111,7 @@ public sealed class ReviewRepository : IReviewRepository
         return (items, totalFilteredCount, avgRating, ratingBreakdown, fitFeedbackSummary);
     }
 
-    public async Task<(List<Productreview> Items, int TotalCount)> GetAdminReviewsPagedAsync(
+    public async Task<(IEnumerable<Productreview> Items, int TotalCount)> SearchAdminReviewsAsync(
         Guid? productId,
         int? rating,
         int page,
