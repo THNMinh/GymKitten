@@ -56,6 +56,7 @@ public sealed class GetAdminOrdersQueryHandler
                 return new OrderItemDto(
                     i.Orderitemid,
                     i.Variantid,
+                    i.Variant?.Productid ?? Guid.Empty,
                     i.Sku,
                     i.Productname,
                     i.Unitprice,

@@ -6,6 +6,8 @@ public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(Guid productId, CancellationToken cancellationToken = default);
 
+    Task<Productvariant?> GetVariantByIdAsync(Guid variantId, CancellationToken cancellationToken = default);
+
     Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
 
     Task<Product?> GetProductWithImagesAsync(Guid productId, CancellationToken cancellationToken = default);

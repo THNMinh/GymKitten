@@ -61,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IInventoryTransactionRepository, InventoryTransactionRepository>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
 
         // Hangfire PostgreSQL Setup
         if (!string.IsNullOrEmpty(connectionString))

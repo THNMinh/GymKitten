@@ -19,6 +19,13 @@ public sealed class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(p => p.Productid == productId, cancellationToken);
     }
 
+    public async Task<Productvariant?> GetVariantByIdAsync(Guid variantId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Productvariants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Variantid == variantId, cancellationToken);
+    }
+
     public async Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         return await _context.Products
