@@ -21,6 +21,7 @@ Tài liệu được phân loại rõ ràng thành **Nhóm Admin (Quản trị h
    - [3.2. Đặt hàng & Thanh toán (`/api/checkout`)](#32-đặt-hàng--thanh-toán-apicheckout)
    - [3.3. Xử lý Cổng thanh toán & Webhook IPN (`/api/payment`)](#33-xử-lý-cổng-thanh-toán--webhook-ipn-apipayment)
    - [3.4. Danh sách Yêu thích (`/api/wishlists`)](#34-danh-sách-yêu-thích-apiwishlists)
+   - [3.5. Chuông Thông báo & SignalR Real-Time (`/api/notifications` & `/hubs/notification`)](#35-chuông-thông-báo--signalr-real-time-apinotifications--hubsnotification)
 4. [Hướng dẫn dành riêng cho Frontend Admin UI](#4-hướng-dẫn-dành-riêng-cho-frontend-admin-ui)
 
 ---
@@ -445,6 +446,89 @@ Cổng thanh toán tự động tương tác với các endpoint này:
 
 #### ➔ `DELETE /api/wishlists/products/{productId}`
 * **Tác dụng**: Xóa trực tiếp sản phẩm khỏi danh sách yêu thích theo `productId`.
+
+---
+
+### 3.5. Chuông Thông báo & SignalR Real-Time (`/api/notifications` & `/hubs/notification`)
+
+*(Tất cả API yêu cầu đăng nhập `[Authorize]`)*
+
+#### ➔ `GET /api/notifications`
+* **Tác dụng**: Lấy danh sách thông báo của tôi (kèm tổng số thông báo chưa đọc `unreadCount`).
+* **Query Parameters**:
+  * `page` (`int`, Optional, Default: `1`): Trang hiện tại.
+  * `pageSize` (`int`, Optional, Default: `10`): Số lượng thông báo trên trang.
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": {
+      "notifications": [
+        {
+          "notificationId": "b1f81df6-4b2a-4318-87ff-43fbfd290b20",
+          "title": "Cập nhật đơn hàng #GK-ORD-001",
+          "content": "Đơn hàng #GK-ORD-001 của bạn đã đổi trạng thái thành: Shipped",
+          "type": "Order",
+          "isRead": false,
+          "targetUrl": "/orders/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "readAt": null,
+          "createdAt": "2026-09-04T12:40:00Z"
+        }
+      ],
+      "unreadCount": 1,
+      "totalCount": 1,
+      "page": 1,
+      "pageSize": 10
+    }
+  }
+  ```
+
+#### ➔ `PUT /api/notifications/{id}/read`
+* **Tác dụng**: Đánh dấu 1 thông báo cụ thể là đã đọc (`isRead = true`, gán `readAt = UTC`).
+* **URL Parameter**:
+  * `id` (`Guid` - Required): ID của thông báo cần đánh dấu đã đọc.
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": null
+  }
+  ```
+
+#### ➔ `PUT /api/notifications/read-all`
+* **Tác dụng**: Đánh dấu tất cả thông báo của người dùng là đã đọc.
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": null
+  }
+  ```
+
+#### 📡 Hướng Dẫn Tích Hợp WebSocket Real-Time (SignalR Client)
+Frontend sử dụng thư viện `@microsoft/signalr` để nhận thông báo tức thời (quả chuông nảy số):
+
+```javascript
+import * as signalR from "@microsoft/signalr";
+
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("https://localhost:7191/hubs/notification", {
+    accessTokenFactory: () => localStorage.getItem("access_token")
+  })
+  .withAutomaticReconnect()
+  .build();
+
+// Lắng nghe sự kiện đẩy thông báo từ Server
+connection.on("ReceiveNotification", (notification) => {
+  console.log("🔔 Nhận thông báo mới:", notification);
+  // Cập nhật State React / Vue:
+  // 1. unreadCount = unreadCount + 1
+  // 2. Thêm notification vào đầu danh sách thông báo
+  // 3. Hiển thị Toast / Popup thông báo
+});
+
+await connection.start();
+```
 
 ---
 

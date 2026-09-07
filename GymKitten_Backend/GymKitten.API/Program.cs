@@ -1,7 +1,10 @@
 using GymKitten.Api.Middleware;
 using GymKitten.API.Hangfire;
+using GymKitten.API.Hubs;
 using GymKitten.API.Middleware;
+using GymKitten.API.Services;
 using GymKitten.Application;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Infrastructure;
 using Hangfire;
 using Microsoft.OpenApi.Models;
@@ -30,7 +33,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000",
                 "https://localhost:3000")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -73,6 +77,10 @@ builder.Services.AddSwaggerGen(options =>
 // Register Application & Infrastructure layers
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// SignalR Realtime Services
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationHubService, NotificationHubService>();
 
 // Global Exception Handler
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -118,5 +126,6 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();

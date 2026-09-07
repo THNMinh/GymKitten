@@ -9,6 +9,7 @@ using GymKitten.Infrastructure.Auth;
 using GymKitten.Infrastructure.Jobs;
 using GymKitten.Infrastructure.Payment;
 using GymKitten.Infrastructure.Payment.MoMo;
+using GymKitten.Infrastructure.Realtime;
 using GymKitten.Infrastructure.Repositories;
 using GymKitten.Infrastructure.Settings;
 using GymKitten.Infrastructure.Storage;
@@ -65,6 +66,10 @@ public static class DependencyInjection
         services.AddScoped<ICouponRepository, CouponRepository>();
         services.AddScoped<ISizeGuideRepository, SizeGuideRepository>();
         services.AddScoped<IUserAddressRepository, UserAddressRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Realtime & SignalR Socket Mapping
+        services.AddSingleton<ConnectionMapping>();
 
         // Hangfire PostgreSQL Setup
         if (!string.IsNullOrEmpty(connectionString))
@@ -150,6 +155,20 @@ public static class DependencyInjection
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
                 ClockSkew = TimeSpan.Zero
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
 

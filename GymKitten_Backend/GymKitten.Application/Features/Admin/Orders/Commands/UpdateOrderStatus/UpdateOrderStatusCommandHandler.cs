@@ -6,6 +6,8 @@ using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
 using GymKitten.Domain.Enums;
 using GymKitten.Domain.Errors;
+using GymKitten.Domain.Events;
+using MediatR;
 
 namespace GymKitten.Application.Features.Admin.Orders.Commands.UpdateOrderStatus;
 
@@ -18,6 +20,7 @@ public sealed class UpdateOrderStatusCommandHandler
     private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
     private readonly IOrderTrackingRepository _orderTrackingRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPublisher _publisher;
 
     public UpdateOrderStatusCommandHandler(
         IUserContext userContext,
@@ -25,7 +28,8 @@ public sealed class UpdateOrderStatusCommandHandler
         IInventoryRepository inventoryRepository,
         IInventoryTransactionRepository inventoryTransactionRepository,
         IOrderTrackingRepository orderTrackingRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IPublisher publisher)
     {
         _userContext = userContext;
         _orderRepository = orderRepository;
@@ -33,6 +37,7 @@ public sealed class UpdateOrderStatusCommandHandler
         _inventoryTransactionRepository = inventoryTransactionRepository;
         _orderTrackingRepository = orderTrackingRepository;
         _unitOfWork = unitOfWork;
+        _publisher = publisher;
     }
 
     public async Task<Result<UpdateOrderStatusResponse>> Handle(
@@ -131,6 +136,17 @@ public sealed class UpdateOrderStatusCommandHandler
         await _orderTrackingRepository.AddAsync(tracking, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (order.Userid.HasValue)
+        {
+            await _publisher.Publish(new OrderStatusChangedDomainEvent(
+                order.Orderid,
+                order.Userid.Value,
+                order.Ordercode ?? order.Orderid.ToString()[..8],
+                order.Currentstatus,
+                $"Đơn hàng #{order.Ordercode} của bạn đã đổi trạng thái thành: {order.Currentstatus}"
+            ), cancellationToken);
+        }
 
         return Result.Success(new UpdateOrderStatusResponse(
             order.Orderid,
