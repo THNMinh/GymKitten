@@ -61,7 +61,10 @@ public sealed class OrderStatusChangedEventHandler : INotificationHandler<OrderS
             Type = notificationEntity.Type,
             TargetUrl = notificationEntity.Targeturl,
             CreatedAt = notificationEntity.Createdat,
-            IsRead = false
+            IsRead = false,
+            OrderId = notificationEvent.OrderId,
+            OrderCode = notificationEvent.OrderCode,
+            NewStatus = notificationEvent.NewStatus.ToString()
         };
 
         await _notificationHubService.SendNotificationToUserAsync(
