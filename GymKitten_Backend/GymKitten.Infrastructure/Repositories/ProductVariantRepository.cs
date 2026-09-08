@@ -16,6 +16,7 @@ public sealed class ProductVariantRepository : IProductVariantRepository
     public async Task<Productvariant?> GetByIdAsync(Guid variantId, CancellationToken cancellationToken = default)
     {
         return await _context.Productvariants
+            .Include(v => v.Product)
             .FirstOrDefaultAsync(v => v.Variantid == variantId, cancellationToken);
     }
 

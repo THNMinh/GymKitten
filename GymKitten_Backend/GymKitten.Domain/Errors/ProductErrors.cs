@@ -23,4 +23,8 @@ public static class ProductErrors
     public static readonly Error UploadFailed = new(
         "ProductImage.UploadFailed",
         "Failed to upload product images.");
+
+    public static readonly Error InactiveOrUnavailable = new(
+        "Product.InactiveOrUnavailable",
+        "Sản phẩm tạm dừng kinh doanh hoặc không khả dụng.");
 }

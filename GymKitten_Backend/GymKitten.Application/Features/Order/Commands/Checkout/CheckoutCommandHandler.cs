@@ -60,9 +60,20 @@ public sealed class CheckoutCommandHandler
         var variantIds = request.Items.Select(i => i.VariantId).Distinct().ToList();
         var inventoryItems = await _inventoryRepository.GetByVariantIdsAsync(variantIds, cancellationToken);
 
-        // 1. Validate stock availability
+        // 1. Validate product active status & stock availability
         foreach (var item in request.Items)
         {
+            var variant = await _productVariantRepository.GetByIdAsync(item.VariantId, cancellationToken);
+            if (variant is null)
+            {
+                return Result.Failure<CheckoutCommandResponse>(ProductVariantErrors.NotFound);
+            }
+
+            if (variant.Product is null || !variant.Product.Isactive || variant.Product.Deletedat != null)
+            {
+                return Result.Failure<CheckoutCommandResponse>(ProductErrors.InactiveOrUnavailable);
+            }
+
             var inventory = inventoryItems.FirstOrDefault(i => i.Variantid == item.VariantId);
             var availableStock = inventory != null ? (inventory.Quantityonhand - inventory.Quantityreserved) : 0;
 
