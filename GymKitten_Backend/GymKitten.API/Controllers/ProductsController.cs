@@ -25,9 +25,52 @@ public class ProductsController : ControllerBase
 
     [HttpGet]
     public async Task<IResult> GetAllProducts(
-        [FromQuery] GetAllProductsQuery query,
+        [FromQuery] string? q,
+        [FromQuery] string? searchName,
+        [FromQuery] string? gender,
+        [FromQuery] string? fitType,
+        [FromQuery] Guid? categoryId,
+        [FromQuery] string? categorySlug,
+        [FromQuery] bool? isActive,
+        [FromQuery] string? activeState,
+        [FromQuery] string? colors,
+        [FromQuery] string? sizes,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        var finalSearch = !string.IsNullOrWhiteSpace(q) ? q : searchName;
+
+        bool? finalIsActive = isActive;
+        if (!string.IsNullOrWhiteSpace(activeState) && activeState.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            finalIsActive = null;
+        }
+
+        var colorList = !string.IsNullOrWhiteSpace(colors)
+            ? colors.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            : null;
+
+        var sizeList = !string.IsNullOrWhiteSpace(sizes)
+            ? sizes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+            : null;
+
+        var query = new GetAllProductsQuery(
+            finalSearch,
+            gender,
+            fitType,
+            categoryId,
+            categorySlug,
+            finalIsActive,
+            colorList,
+            sizeList,
+            minPrice,
+            maxPrice,
+            page,
+            pageSize);
+
         var result = await _sender.Send(query, cancellationToken);
         return result.MatchOk();
     }

@@ -1,3 +1,7 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
 using GymKitten.Domain.Common;
@@ -23,6 +27,7 @@ public sealed class GetAllProductsQueryHandler
             request.Gender,
             request.FitType,
             request.CategoryId,
+            request.CategorySlug,
             request.IsActive,
             request.Colors,
             request.Sizes,
@@ -34,19 +39,71 @@ public sealed class GetAllProductsQueryHandler
 
         var items = products.Select(p =>
         {
-            var primaryImage = p.Productimages
-                .OrderByDescending(img => img.Variantid == null)
-                .ThenByDescending(img => img.Isprimary)
+            var imagesOrdered = p.Productimages
+                .OrderByDescending(img => img.Isprimary)
                 .ThenBy(img => img.Displayorder)
-                .FirstOrDefault();
+                .ToList();
+
+            var primaryImage = imagesOrdered.FirstOrDefault();
+            var secondaryImage = imagesOrdered.Skip(1).FirstOrDefault() ?? primaryImage;
+
+            var imageDtos = imagesOrdered.Select(img => new ProductImageItemDto(
+                img.Imageid,
+                img.Imageurl,
+                img.Isprimary,
+                img.Displayorder,
+                img.Variantid)).ToList();
+
+            var variantDtos = p.Productvariants
+                .OrderBy(v => v.Colorname)
+                .ThenBy(v => v.Size)
+                .Select(v =>
+                {
+                    var stock = v.Inventoryitem != null
+                        ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved)
+                        : 10;
+
+                    var vImg = p.Productimages.FirstOrDefault(img => img.Variantid == v.Variantid)?.Imageurl
+                             ?? primaryImage?.Imageurl;
+
+                    return new ProductVariantItemDto(
+                        v.Variantid,
+                        v.Sku,
+                        v.Colorname,
+                        v.Colorhex,
+                        v.Size,
+                        v.Price,
+                        v.Originalprice,
+                        stock,
+                        stock > 0,
+                        vImg);
+                }).ToList();
+
+            var activeReviews = p.Productreviews.Where(r => r.Deletedat == null).ToList();
+            var avgRating = activeReviews.Any()
+                ? Math.Round(activeReviews.Average(r => r.Rating), 1)
+                : 0.0;
+            var reviewCount = activeReviews.Count;
+
+            var minPrice = variantDtos.Any() ? variantDtos.Min(v => v.Price) : 0m;
 
             return new ProductItemDto(
                 p.Productid,
+                p.Categoryid,
+                p.Category?.Name,
                 p.Name,
                 p.Slug,
-                p.Productvariants.Any() ? p.Productvariants.Min(v => v.Price) : 0m,
+                p.Description,
+                p.Fittype,
                 p.Gender,
+                p.Isactive,
+                minPrice,
                 primaryImage?.Imageurl,
+                secondaryImage?.Imageurl,
+                avgRating,
+                reviewCount,
+                imageDtos,
+                variantDtos,
                 p.Createdat);
         }).ToList();
 

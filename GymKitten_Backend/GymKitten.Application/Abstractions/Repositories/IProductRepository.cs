@@ -17,6 +17,7 @@ public interface IProductRepository
         string? gender,
         string? fitType,
         Guid? categoryId,
+        string? categorySlug,
         bool? isActive,
         List<string>? colors,
         List<string>? sizes,

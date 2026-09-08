@@ -8,6 +8,7 @@ public sealed record GetAllProductsQuery(
     string? Gender = null,
     string? FitType = null,
     Guid? CategoryId = null,
+    string? CategorySlug = null,
     bool? IsActive = null,
     List<string>? Colors = null,
     List<string>? Sizes = null,

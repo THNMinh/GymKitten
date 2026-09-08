@@ -67,13 +67,21 @@ public sealed class UpdateProductVariantCommandHandler
             variant.Size = request.Size.Trim();
         }
 
-        if (request.Price.HasValue && request.Price.Value > 0)
+        if (request.Price.HasValue)
         {
+            if (request.Price.Value <= 0 || request.Price.Value > 1000000000m)
+            {
+                return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.InvalidPrice);
+            }
             variant.Price = request.Price.Value;
         }
 
         if (request.OriginalPrice.HasValue)
         {
+            if (request.OriginalPrice.Value > 1000000000m)
+            {
+                return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.InvalidPrice);
+            }
             variant.Originalprice = request.OriginalPrice.Value;
         }
 

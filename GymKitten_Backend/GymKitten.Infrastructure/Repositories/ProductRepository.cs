@@ -51,6 +51,7 @@ public sealed class ProductRepository : IProductRepository
         string? gender,
         string? fitType,
         Guid? categoryId,
+        string? categorySlug,
         bool? isActive,
         List<string>? colors,
         List<string>? sizes,
@@ -62,26 +63,40 @@ public sealed class ProductRepository : IProductRepository
     {
         var query = _context.Products
             .AsNoTracking()
+            .Include(p => p.Category)
             .Include(p => p.Productimages)
+            .Include(p => p.Productreviews)
             .Include(p => p.Productvariants)
+                .ThenInclude(v => v.Inventoryitem)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchName))
         {
             var term = searchName.Trim().ToLower();
-            query = query.Where(p => p.Name.ToLower().Contains(term));
+            query = query.Where(p =>
+                p.Name.ToLower().Contains(term) ||
+                (p.Description != null && p.Description.ToLower().Contains(term)) ||
+                (p.Fittype != null && p.Fittype.ToLower().Contains(term)) ||
+                (p.Category != null && p.Category.Name.ToLower().Contains(term)) ||
+                p.Productvariants.Any(v => v.Sku.ToLower().Contains(term) || v.Colorname.ToLower().Contains(term)));
         }
 
-        if (!string.IsNullOrWhiteSpace(gender))
+        if (!string.IsNullOrWhiteSpace(gender) && !gender.Equals("All", StringComparison.OrdinalIgnoreCase))
         {
             var genderTerm = gender.Trim().ToLower();
-            query = query.Where(p => p.Gender.ToLower() == genderTerm);
+            query = query.Where(p => p.Gender.ToLower() == genderTerm || p.Gender.ToLower() == "unisex");
         }
 
         if (!string.IsNullOrWhiteSpace(fitType))
         {
             var fitTerm = fitType.Trim().ToLower();
-            query = query.Where(p => p.Fittype != null && p.Fittype.ToLower() == fitTerm);
+            query = query.Where(p => p.Fittype != null && (p.Fittype.ToLower().Contains(fitTerm) || fitTerm.Contains(p.Fittype.ToLower())));
+        }
+
+        if (!string.IsNullOrWhiteSpace(categorySlug))
+        {
+            var slugTerm = categorySlug.Trim().ToLower();
+            query = query.Where(p => p.Category != null && (p.Category.Slug.ToLower() == slugTerm || p.Category.Name.ToLower().Contains(slugTerm)));
         }
 
         if (categoryId.HasValue && categoryId.Value != Guid.Empty)
@@ -94,11 +109,30 @@ public sealed class ProductRepository : IProductRepository
             query = query.Where(p => p.Isactive == isActive.Value);
         }
 
-        // Deep Filtering on Productvariants
+        // Flexible Fuzzy Filtering on Productvariants Colorname
         if (colors != null && colors.Count > 0)
         {
-            var colorSet = colors.Select(c => c.Trim().ToLower()).ToList();
-            query = query.Where(p => p.Productvariants.Any(v => colorSet.Contains(v.Colorname.ToLower())));
+            var colorTerms = colors
+                .Select(c => c.Trim().ToLower())
+                .Where(c => !string.IsNullOrEmpty(c))
+                .ToList();
+
+            if (colorTerms.Count > 0)
+            {
+                query = query.Where(p => p.Productvariants.Any(v =>
+                    colorTerms.Any(c =>
+                        v.Colorname.ToLower().Contains(c) ||
+                        c.Contains(v.Colorname.ToLower()) ||
+                        (c == "black" && (v.Colorname.ToLower().Contains("onyx") || v.Colorname.ToLower().Contains("đen"))) ||
+                        (c == "blue" && (v.Colorname.ToLower().Contains("navy") || v.Colorname.ToLower().Contains("cyan") || v.Colorname.ToLower().Contains("sky"))) ||
+                        (c == "pink" && v.Colorname.ToLower().Contains("rose")) ||
+                        (c == "grey" && v.Colorname.ToLower().Contains("gray")) ||
+                        (c == "gray" && v.Colorname.ToLower().Contains("grey")) ||
+                        (c == "purple" && v.Colorname.ToLower().Contains("violet")) ||
+                        (c == "violet" && v.Colorname.ToLower().Contains("purple"))
+                    )
+                ));
+            }
         }
 
         if (sizes != null && sizes.Count > 0)

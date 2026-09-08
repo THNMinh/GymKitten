@@ -11,4 +11,8 @@ public static class ProductVariantErrors
     public static readonly Error SkuAlreadyExists = new(
         "ProductVariant.SkuAlreadyExists",
         "A product variant with this SKU already exists.");
+
+    public static readonly Error InvalidPrice = new(
+        "ProductVariant.InvalidPrice",
+        "Giá sản phẩm vượt quá giới hạn cho phép (tối đa 1.000.000.000đ).");
 }

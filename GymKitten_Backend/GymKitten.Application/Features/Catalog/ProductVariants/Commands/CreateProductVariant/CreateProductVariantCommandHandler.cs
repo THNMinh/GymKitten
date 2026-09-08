@@ -47,7 +47,12 @@ public sealed class CreateProductVariantCommandHandler
             return Result.Failure<CreateProductVariantResponse>(ProductErrors.NotFound);
         }
 
-        // 2. Check SKU uniqueness
+        // 2. Check SKU uniqueness & Price limits
+        if (request.Price <= 0 || request.Price > 1000000000m || (request.OriginalPrice.HasValue && request.OriginalPrice.Value > 1000000000m))
+        {
+            return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.InvalidPrice);
+        }
+
         var skuExists = await _productVariantRepository.ExistsBySkuAsync(request.Sku.Trim(), cancellationToken);
         if (skuExists)
         {
