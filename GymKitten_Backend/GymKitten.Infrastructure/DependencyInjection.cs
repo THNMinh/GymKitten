@@ -96,10 +96,10 @@ public static class DependencyInjection
         var vnpayConfig = configuration.GetSection("VNPAY");
         services.AddVnpayClient(config =>
         {
-            config.TmnCode = vnpayConfig["TmnCode"] ?? "CGXZ858Z";
-            config.HashSecret = vnpayConfig["HashSecret"] ?? "NRA35K51WII3FWT1IARU2GOM647ZOMN0";
+            config.TmnCode = vnpayConfig["TmnCode"] ?? string.Empty;
+            config.HashSecret = vnpayConfig["HashSecret"] ?? string.Empty;
             config.BaseUrl = vnpayConfig["BaseUrl"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-            config.CallbackUrl = vnpayConfig["CallbackUrl"] ?? "https://localhost:7191/api/payment/vnpay-callback";
+            config.CallbackUrl = vnpayConfig["CallbackUrl"] ?? string.Empty;
             config.Version = vnpayConfig["Version"] ?? "2.1.0";
             config.OrderType = vnpayConfig["OrderType"] ?? "other";
         });

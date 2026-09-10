@@ -416,3 +416,16 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Application Secrets & Configurations
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.Example.json
+!**/appsettings.example.json
+
+# Environment variables & backups
+*.env
+*.env.*
+*.bak
+*.bundle
+

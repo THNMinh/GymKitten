@@ -40,11 +40,11 @@ Thêm thông tin tài khoản đăng nhập Dashboard Hangfire:
 ```json
 {
   "ConnectionStrings": {
-    "Database": "Host=localhost;Port=5432;Database=your_db;Username=postgres;Password=123456"
+    "Database": "Host=localhost;Port=5432;Database=your_db;Username=postgres;Password=YOUR_PASSWORD"
   },
   "Hangfire": {
     "Username": "admin",
-    "Password": "adminpassword123"
+    "Password": "YOUR_HANGFIRE_PASSWORD"
   }
 }
 ```

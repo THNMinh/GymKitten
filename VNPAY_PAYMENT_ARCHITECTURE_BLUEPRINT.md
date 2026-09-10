@@ -441,8 +441,8 @@ Cấu hình tài khoản Sandbox VNPay thử nghiệm:
 ```json
 {
   "VNPAY": {
-    "TmnCode": "ATXZOOS2",
-    "HashSecret": "IYAQRT2DBBFWMC8PIZHYX4Z2RFKFBK2A",
+    "TmnCode": "YOUR_SANDBOX_TMN_CODE",
+    "HashSecret": "YOUR_SANDBOX_HASH_SECRET",
     "BaseUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
     "CallbackUrl": "https://your-backend-api-domain.com/api/wallets/callback",
     "Version": "2.1.0",
