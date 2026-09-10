@@ -23,6 +23,7 @@ public sealed class CheckoutCommandHandler
     private readonly IVnPayService _vnPayService;
     private readonly IMomoService _momoService;
     private readonly IOrderAutoCancelService _orderAutoCancelService;
+    private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
 
     public CheckoutCommandHandler(
         IUserContext userContext,
@@ -34,7 +35,8 @@ public sealed class CheckoutCommandHandler
         IUnitOfWork unitOfWork,
         IVnPayService vnPayService,
         IMomoService momoService,
-        IOrderAutoCancelService orderAutoCancelService)
+        IOrderAutoCancelService orderAutoCancelService,
+        IInventoryTransactionRepository inventoryTransactionRepository)
     {
         _userContext = userContext;
         _productVariantRepository = productVariantRepository;
@@ -46,6 +48,7 @@ public sealed class CheckoutCommandHandler
         _vnPayService = vnPayService;
         _momoService = momoService;
         _orderAutoCancelService = orderAutoCancelService;
+        _inventoryTransactionRepository = inventoryTransactionRepository;
     }
 
     public async Task<Result<CheckoutCommandResponse>> Handle(
@@ -83,7 +86,11 @@ public sealed class CheckoutCommandHandler
             }
         }
 
-        // 2. Reserve stock
+        var orderId = Guid.NewGuid();
+        var orderCode = $"GK-{DateTime.UtcNow:yyMMddHHmmss}-{Random.Shared.Next(100, 999)}";
+        var customer = _userContext.Email ?? "Guest";
+
+        // 2. Reserve stock & record inventory transactions
         foreach (var item in request.Items)
         {
             var inventory = inventoryItems.FirstOrDefault(i => i.Variantid == item.VariantId);
@@ -92,14 +99,27 @@ public sealed class CheckoutCommandHandler
                 inventory.Quantityreserved += item.Quantity;
                 inventory.Updatedat = DateTime.UtcNow;
                 _inventoryRepository.Update(inventory);
+
+                var refText = $"Order #{orderCode} | Customer: {customer}";
+                if (refText.Length > 100) refText = refText[..100];
+
+                var reserveTxn = new Inventorytransaction
+                {
+                    Transactionid = Guid.NewGuid(),
+                    Variantid = item.VariantId,
+                    Quantitychange = item.Quantity,
+                    Type = "Reserve",
+                    Referenceid = refText,
+                    Createdat = DateTime.UtcNow,
+                    Updatedat = DateTime.UtcNow
+                };
+                await _inventoryTransactionRepository.AddAsync(reserveTxn, cancellationToken);
             }
         }
 
         // 3. Create Order & Items
         decimal subtotal = 0;
         var orderItems = new List<Orderitem>();
-        var orderId = Guid.NewGuid();
-        var orderCode = $"GK-{DateTime.UtcNow:yyMMddHHmmss}-{Random.Shared.Next(100, 999)}";
 
         foreach (var item in request.Items)
         {

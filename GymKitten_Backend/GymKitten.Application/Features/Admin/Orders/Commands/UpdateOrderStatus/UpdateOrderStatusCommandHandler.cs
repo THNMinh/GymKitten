@@ -2,6 +2,7 @@ using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
 using GymKitten.Domain.Enums;
@@ -21,6 +22,7 @@ public sealed class UpdateOrderStatusCommandHandler
     private readonly IOrderTrackingRepository _orderTrackingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublisher _publisher;
+    private readonly ISystemLogService _systemLogService;
 
     public UpdateOrderStatusCommandHandler(
         IUserContext userContext,
@@ -29,7 +31,8 @@ public sealed class UpdateOrderStatusCommandHandler
         IInventoryTransactionRepository inventoryTransactionRepository,
         IOrderTrackingRepository orderTrackingRepository,
         IUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IPublisher publisher,
+        ISystemLogService systemLogService)
     {
         _userContext = userContext;
         _orderRepository = orderRepository;
@@ -38,6 +41,7 @@ public sealed class UpdateOrderStatusCommandHandler
         _orderTrackingRepository = orderTrackingRepository;
         _unitOfWork = unitOfWork;
         _publisher = publisher;
+        _systemLogService = systemLogService;
     }
 
     public async Task<Result<UpdateOrderStatusResponse>> Handle(
@@ -75,14 +79,19 @@ public sealed class UpdateOrderStatusCommandHandler
                     inventory.Updatedat = DateTime.UtcNow;
                     _inventoryRepository.Update(inventory);
 
+                    var performer = _userContext.Email ?? "Admin";
+                    var refText = $"Order #{order.Ordercode} | Admin: {performer}";
+                    if (refText.Length > 100) refText = refText[..100];
+
                     var auditTxn = new Inventorytransaction
                     {
                         Transactionid = Guid.NewGuid(),
                         Variantid = item.Variantid,
                         Quantitychange = -item.Quantity,
-                        Type = "OrderShipped",
-                        Referenceid = order.Orderid.ToString(),
-                        Createdat = DateTime.UtcNow
+                        Type = "Export",
+                        Referenceid = refText,
+                        Createdat = DateTime.UtcNow,
+                        Updatedat = DateTime.UtcNow
                     };
                     await _inventoryTransactionRepository.AddAsync(auditTxn, cancellationToken);
                 }
@@ -111,6 +120,22 @@ public sealed class UpdateOrderStatusCommandHandler
                     inventory.Quantityreserved = Math.Max(0, inventory.Quantityreserved - item.Quantity);
                     inventory.Updatedat = DateTime.UtcNow;
                     _inventoryRepository.Update(inventory);
+
+                    var performer = _userContext.Email ?? "Admin";
+                    var refText = $"Cancel #{order.Ordercode} | Admin: {performer}";
+                    if (refText.Length > 100) refText = refText[..100];
+
+                    var cancelTxn = new Inventorytransaction
+                    {
+                        Transactionid = Guid.NewGuid(),
+                        Variantid = item.Variantid,
+                        Quantitychange = -item.Quantity,
+                        Type = "Reserve",
+                        Referenceid = refText,
+                        Createdat = DateTime.UtcNow,
+                        Updatedat = DateTime.UtcNow
+                    };
+                    await _inventoryTransactionRepository.AddAsync(cancelTxn, cancellationToken);
                 }
             }
         }
@@ -147,6 +172,13 @@ public sealed class UpdateOrderStatusCommandHandler
                 $"Đơn hàng #{order.Ordercode} của bạn đã đổi trạng thái thành: {order.Currentstatus}"
             ), cancellationToken);
         }
+
+        await _systemLogService.LogAsync(
+            "UpdateOrderStatus",
+            $"Updated order #{order.Ordercode} status from '{previousStatus}' to '{newStatusUpper}'. Admin: {_userContext.Email ?? "Admin"}",
+            "Information",
+            _userContext.UserId,
+            cancellationToken);
 
         return Result.Success(new UpdateOrderStatusResponse(
             order.Orderid,

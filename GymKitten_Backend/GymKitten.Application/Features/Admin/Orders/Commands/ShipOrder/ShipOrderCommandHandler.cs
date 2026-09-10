@@ -1,6 +1,8 @@
+using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
 using GymKitten.Domain.Errors;
@@ -14,17 +16,23 @@ public sealed class ShipOrderCommandHandler
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserContext _userContext;
+    private readonly ISystemLogService _systemLogService;
 
     public ShipOrderCommandHandler(
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IInventoryTransactionRepository inventoryTransactionRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IUserContext userContext,
+        ISystemLogService systemLogService)
     {
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _inventoryTransactionRepository = inventoryTransactionRepository;
         _unitOfWork = unitOfWork;
+        _userContext = userContext;
+        _systemLogService = systemLogService;
     }
 
     public async Task<Result<ShipOrderCommandResponse>> Handle(
@@ -61,13 +69,17 @@ public sealed class ShipOrderCommandHandler
                 inventory.Updatedat = DateTime.UtcNow;
                 _inventoryRepository.Update(inventory);
 
+                var performer = _userContext.Email ?? "Admin";
+                var refText = $"Order #{order.Ordercode} | Admin: {performer}";
+                if (refText.Length > 100) refText = refText[..100];
+
                 var transaction = new Inventorytransaction
                 {
                     Transactionid = Guid.NewGuid(),
                     Variantid = item.Variantid,
                     Quantitychange = -item.Quantity,
-                    Type = "OrderShipped",
-                    Referenceid = order.Orderid.ToString(),
+                    Type = "Export",
+                    Referenceid = refText,
                     Createdat = DateTime.UtcNow,
                     Updatedat = DateTime.UtcNow
                 };
@@ -77,6 +89,13 @@ public sealed class ShipOrderCommandHandler
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _systemLogService.LogAsync(
+            "ShipOrder",
+            $"Shipped order #{order.Ordercode} to customer. Admin: {_userContext.Email ?? "Admin"}",
+            "Information",
+            _userContext.UserId,
+            cancellationToken);
 
         return Result.Success(new ShipOrderCommandResponse(order.Orderid, order.Currentstatus));
     }

@@ -3,6 +3,7 @@ using GymKitten.API.Requests;
 using GymKitten.Application.Features.Admin.Inventory.Commands.AdjustStock;
 using GymKitten.Application.Features.Admin.Inventory.Commands.Restock;
 using GymKitten.Application.Features.Admin.Inventory.Queries.GetInventory;
+using GymKitten.Application.Features.Admin.Inventory.Queries.GetInventoryTransactions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,6 +48,15 @@ public class AdminInventoryController : ControllerBase
     {
         var command = new AdjustStockCommand(request.VariantId, request.NewQuantity, request.Note ?? string.Empty);
         var result = await _sender.Send(command, cancellationToken);
+        return result.MatchOk();
+    }
+
+    [HttpGet("transactions")]
+    public async Task<IResult> GetTransactions(
+        [FromQuery] GetInventoryTransactionsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(query, cancellationToken);
         return result.MatchOk();
     }
 }

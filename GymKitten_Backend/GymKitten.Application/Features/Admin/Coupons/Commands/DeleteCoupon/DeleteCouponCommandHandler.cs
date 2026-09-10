@@ -2,6 +2,7 @@ using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Errors;
 
@@ -13,15 +14,18 @@ public sealed class DeleteCouponCommandHandler
     private readonly IUserContext _userContext;
     private readonly ICouponRepository _couponRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISystemLogService? _systemLogService;
 
     public DeleteCouponCommandHandler(
         IUserContext userContext,
         ICouponRepository couponRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISystemLogService? systemLogService = null)
     {
         _userContext = userContext;
         _couponRepository = couponRepository;
         _unitOfWork = unitOfWork;
+        _systemLogService = systemLogService;
     }
 
     public async Task<Result> Handle(
@@ -46,6 +50,15 @@ public sealed class DeleteCouponCommandHandler
 
         _couponRepository.Update(coupon);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (_systemLogService != null)
+        {
+            await _systemLogService.LogAsync(
+                "DeleteCoupon",
+                $"Admin {_userContext.Email ?? "Unknown"} deleted (deactivated) coupon '{coupon.Code}' (ID: {coupon.Couponid}).",
+                "Information",
+                cancellationToken: cancellationToken);
+        }
 
         return Result.Success();
     }

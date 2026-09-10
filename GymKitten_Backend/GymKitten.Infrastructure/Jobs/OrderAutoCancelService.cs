@@ -1,6 +1,7 @@
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Jobs;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -36,6 +37,8 @@ public class OrderAutoCancelService : IOrderAutoCancelService
         using var scope = _serviceScopeFactory.CreateScope();
         var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var inventoryRepository = scope.ServiceProvider.GetRequiredService<IInventoryRepository>();
+        var inventoryTransactionRepository = scope.ServiceProvider.GetRequiredService<IInventoryTransactionRepository>();
+        var systemLogService = scope.ServiceProvider.GetService<ISystemLogService>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var order = await orderRepository.GetByIdWithItemsAsync(orderId);
@@ -64,10 +67,35 @@ public class OrderAutoCancelService : IOrderAutoCancelService
                     inventory.Quantityreserved = Math.Max(0, inventory.Quantityreserved - item.Quantity);
                     inventory.Updatedat = DateTime.UtcNow;
                     inventoryRepository.Update(inventory);
+
+                    var refText = $"AutoCancel #{order.Ordercode} | System";
+                    if (refText.Length > 100) refText = refText[..100];
+
+                    var cancelTxn = new GymKitten.Domain.Entities.Inventorytransaction
+                    {
+                        Transactionid = Guid.NewGuid(),
+                        Variantid = item.Variantid,
+                        Quantitychange = -item.Quantity,
+                        Type = "Reserve",
+                        Referenceid = refText,
+                        Createdat = DateTime.UtcNow,
+                        Updatedat = DateTime.UtcNow
+                    };
+                    await inventoryTransactionRepository.AddAsync(cancelTxn);
                 }
             }
 
             await unitOfWork.SaveChangesAsync();
+
+            if (systemLogService != null)
+            {
+                await systemLogService.LogAsync(
+                    "AutoCancelOrder",
+                    $"Order #{order.Ordercode} auto-cancelled due to payment timeout. Reserved inventory released.",
+                    "Information",
+                    order.Userid);
+            }
+
             _logger.LogInformation("Order {OrderId} auto-cancelled and reserved inventory released successfully.", orderId);
         }
         else

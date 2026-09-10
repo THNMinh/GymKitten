@@ -429,3 +429,5 @@ FodyWeavers.xsd
 *.bak
 *.bundle
 
+# Markdown context
+*.md

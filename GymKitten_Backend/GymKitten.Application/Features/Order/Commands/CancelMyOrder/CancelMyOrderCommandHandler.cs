@@ -2,6 +2,7 @@ using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
 using GymKitten.Domain.Enums;
@@ -16,6 +17,8 @@ public sealed class CancelMyOrderCommandHandler
     private readonly IOrderRepository _orderRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IOrderTrackingRepository _orderTrackingRepository;
+    private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
+    private readonly ISystemLogService _systemLogService;
     private readonly IUnitOfWork _unitOfWork;
 
     public CancelMyOrderCommandHandler(
@@ -23,12 +26,16 @@ public sealed class CancelMyOrderCommandHandler
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IOrderTrackingRepository orderTrackingRepository,
+        IInventoryTransactionRepository inventoryTransactionRepository,
+        ISystemLogService systemLogService,
         IUnitOfWork unitOfWork)
     {
         _userContext = userContext;
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _orderTrackingRepository = orderTrackingRepository;
+        _inventoryTransactionRepository = inventoryTransactionRepository;
+        _systemLogService = systemLogService;
         _unitOfWork = unitOfWork;
     }
 
@@ -68,6 +75,22 @@ public sealed class CancelMyOrderCommandHandler
                 inventory.Quantityreserved = Math.Max(0, inventory.Quantityreserved - item.Quantity);
                 inventory.Updatedat = DateTime.UtcNow;
                 _inventoryRepository.Update(inventory);
+
+                var customer = _userContext.Email ?? "Customer";
+                var refText = $"Cancel #{order.Ordercode} | Customer: {customer}";
+                if (refText.Length > 100) refText = refText[..100];
+
+                var cancelTxn = new Inventorytransaction
+                {
+                    Transactionid = Guid.NewGuid(),
+                    Variantid = item.Variantid,
+                    Quantitychange = -item.Quantity,
+                    Type = "Reserve",
+                    Referenceid = refText,
+                    Createdat = DateTime.UtcNow,
+                    Updatedat = DateTime.UtcNow
+                };
+                await _inventoryTransactionRepository.AddAsync(cancelTxn, cancellationToken);
             }
         }
 
@@ -88,6 +111,13 @@ public sealed class CancelMyOrderCommandHandler
         await _orderTrackingRepository.AddAsync(tracking, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _systemLogService.LogAsync(
+            "CancelOrder",
+            $"Customer cancelled order #{order.Ordercode}. Released reserved inventory.",
+            "Information",
+            _userContext.UserId,
+            cancellationToken);
 
         return Result.Success(new CancelMyOrderResponse(
             order.Orderid,

@@ -1,4 +1,3 @@
-using System.Text;
 using GymKitten.Application.Abstractions.Auth;
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Jobs;
@@ -11,6 +10,7 @@ using GymKitten.Infrastructure.Payment;
 using GymKitten.Infrastructure.Payment.MoMo;
 using GymKitten.Infrastructure.Realtime;
 using GymKitten.Infrastructure.Repositories;
+using GymKitten.Infrastructure.Services;
 using GymKitten.Infrastructure.Settings;
 using GymKitten.Infrastructure.Storage;
 using Hangfire;
@@ -22,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
+using System.Text;
 using VNPAY;
 using VNPAY.Extensions;
 
@@ -67,6 +68,8 @@ public static class DependencyInjection
         services.AddScoped<ISizeGuideRepository, SizeGuideRepository>();
         services.AddScoped<IUserAddressRepository, UserAddressRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<ISystemLogRepository, SystemLogRepository>();
+        services.AddScoped<ISystemLogService, SystemLogService>();
 
         // Realtime & SignalR Socket Mapping
         services.AddSingleton<ConnectionMapping>();
