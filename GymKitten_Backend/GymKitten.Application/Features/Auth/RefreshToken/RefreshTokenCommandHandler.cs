@@ -38,10 +38,14 @@ public sealed class RefreshTokenCommandHandler
             return Result.Failure<LoginResponse>(AuthErrors.InvalidRefreshToken);
         }
 
-        // 2. Check if revoked or already used
+        // 2. Check if revoked or already used (Token Reuse Detection)
         if (storedToken.Isrevoked || storedToken.Isused)
         {
-            return Result.Failure<LoginResponse>(AuthErrors.InvalidRefreshToken);
+            // If an already used or revoked token is presented, suspect token theft and revoke all user tokens
+            await _refreshTokenRepository.RevokeAllUserTokensAsync(storedToken.Userid, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Result.Failure<LoginResponse>(AuthErrors.TokenReuseDetected);
         }
 
         // 3. Check if expired

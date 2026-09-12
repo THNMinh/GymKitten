@@ -6,6 +6,7 @@ using GymKitten.Application.Abstractions.Services;
 using GymKitten.Application.Abstractions.Storage;
 using GymKitten.Infrastructure.Auth;
 using GymKitten.Infrastructure.Jobs;
+using GymKitten.Infrastructure.Mail;
 using GymKitten.Infrastructure.Payment;
 using GymKitten.Infrastructure.Payment.MoMo;
 using GymKitten.Infrastructure.Realtime;
@@ -14,6 +15,7 @@ using GymKitten.Infrastructure.Services;
 using GymKitten.Infrastructure.Settings;
 using GymKitten.Infrastructure.Storage;
 using Hangfire;
+using StackExchange.Redis;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -181,10 +183,26 @@ public static class DependencyInjection
         services.AddScoped<IJwtProvider, JwtProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
 
-        // OTP & Email services
+        // OTP & Redis Store
         services.AddSingleton<IOtpGenerator, OtpGenerator>();
-        services.AddSingleton<IRedisOtpStore, InMemoryOtpStore>();
-        services.AddSingleton<IEmailJobService, StubEmailJobService>();
+
+        var redisConnectionString = configuration.GetConnectionString("Redis")
+            ?? configuration["Redis:ConnectionString"]
+            ?? "localhost:6379,abortConnect=false,connectTimeout=5000";
+
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+            return ConnectionMultiplexer.Connect(redisOptions);
+        });
+
+        services.AddSingleton<IRedisOtpStore, RedisOtpStore>();
+
+        // Email & MailKit services
+        services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+        services.AddTransient<IMailService, MailService>();
+        services.AddScoped<IEmailJobService, HangfireEmailJobService>();
 
         // Register MediatR notification handlers from Infrastructure assembly
         services.AddMediatR(config =>

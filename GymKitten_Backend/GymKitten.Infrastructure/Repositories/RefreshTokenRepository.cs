@@ -29,4 +29,14 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
     {
         _context.Refreshtokens.Update(refreshToken);
     }
+
+    public async Task RevokeAllUserTokensAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await _context.Refreshtokens
+            .Where(rt => rt.Userid == userId && !rt.Isrevoked)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(rt => rt.Isrevoked, true)
+                .SetProperty(rt => rt.Updatedat, DateTime.UtcNow),
+                cancellationToken);
+    }
 }

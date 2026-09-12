@@ -29,4 +29,18 @@ public sealed class InMemoryOtpStore : IRedisOtpStore
 
         return Task.CompletedTask;
     }
+
+    public Task<string?> GetAsync(Guid userId, CancellationToken ct = default)
+    {
+        var key = $"otp:{userId}";
+        _store.TryGetValue(key, out var otpCode);
+        return Task.FromResult(otpCode);
+    }
+
+    public Task RemoveAsync(Guid userId, CancellationToken ct = default)
+    {
+        var key = $"otp:{userId}";
+        _store.TryRemove(key, out _);
+        return Task.CompletedTask;
+    }
 }

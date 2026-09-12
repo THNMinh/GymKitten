@@ -22,4 +22,11 @@ public sealed class StubEmailJobService : IEmailJobService
             "[STUB EMAIL] Enqueued OTP email to {Email} with code: {OtpCode}",
             email, otpCode);
     }
+
+    public void EnqueueSendResetPasswordEmail(string email, string newPassword)
+    {
+        _logger.LogInformation(
+            "[STUB EMAIL] Enqueued Reset Password email to {Email} with new password: {NewPassword}",
+            email, newPassword);
+    }
 }

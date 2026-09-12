@@ -439,7 +439,7 @@ Một sản phẩm có thể có nhiều biến thể (Màu sắc, Size, Giá ti
 ### 3.1. Xác thực & Tài khoản (`/api/auth`)
 
 #### ➔ `POST /api/auth/register`
-* **Tác dụng**: Đăng ký tài khoản khách hàng mới.
+* **Tác dụng**: Đăng ký tài khoản khách hàng mới. Hệ thống tự động sinh mã OTP 6 chữ số lưu vào Redis (TTL 5 phút) và đẩy Hangfire Job gửi email xác thực tới hòm thư của khách.
 * **Request Body (`application/json`)**:
   ```json
   {
@@ -448,11 +448,64 @@ Một sản phẩm có thể có nhiều biến thể (Màu sắc, Size, Giá ti
     "password": "Password123!"
   }
   ```
-* **Response thành công (`201 Created`)**.
-* **Response thất bại (`409 Conflict`)**: Email đã được đăng ký trước đó.
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": {
+      "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "nguyenvana@gmail.com",
+      "fullName": "Nguyen Van A",
+      "role": "Customer",
+      "createdAt": "2026-09-12T07:30:00Z"
+    }
+  }
+  ```
+* **Response thất bại (`409 Conflict`)**: Email đã được đăng ký trước đó (`Auth.EmailAlreadyExists`).
+
+#### ➔ `POST /api/auth/verify-email`
+* **Tác dụng**: Xác thực địa chỉ email bằng mã OTP 6 chữ số gửi qua email. Nếu đúng, hệ thống kích hoạt tài khoản (`isEmailVerified = true`), xóa mã khỏi Redis (chống Replay Attack) và đăng nhập ngay cho khách (cấp cặp Token).
+* **Request Body (`application/json`)**:
+  ```json
+  {
+    "email": "nguyenvana@gmail.com",
+    "otpCode": "849201"
+  }
+  ```
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refreshToken": "d8e9f10a-1234-5678-9abc-def012345678"
+    }
+  }
+  ```
+* **Response thất bại**:
+  - `400 Bad Request` (`Auth.OtpExpired`): Mã OTP đã hết hạn sau 5 phút.
+  - `400 Bad Request` (`Auth.WrongOtp`): Mã OTP không chính xác.
+  - `400 Bad Request` (`Auth.UserAlreadyVerified`): Email này đã được kích hoạt trước đó.
+
+#### ➔ `POST /api/auth/resend-otp`
+* **Tác dụng**: Yêu cầu gửi lại mã OTP mới khi mã cũ hết hạn hoặc thất lạc. Hệ thống sinh mã mới, ghi đè vào Redis (reset thời gian 5 phút) và đẩy Hangfire Job gửi email mới.
+* **Request Body (`application/json`)**:
+  ```json
+  {
+    "email": "nguyenvana@gmail.com"
+  }
+  ```
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": null
+  }
+  ```
 
 #### ➔ `POST /api/auth/login`
-* **Tác dụng**: Đăng nhập lấy JWT Bearer Token.
+* **Tác dụng**: Đăng nhập bằng Email và Mật khẩu để lấy JWT Bearer Token.
+* **Quy tắc bảo mật**: Nếu tài khoản chưa xác thực email (`isEmailVerified = false`), hệ thống sẽ trả về lỗi `Auth.EmailNotVerified` để Frontend điều hướng khách sang trang nhập mã OTP.
 * **Request Body (`application/json`)**:
   ```json
   {
@@ -463,14 +516,20 @@ Một sản phẩm có thể có nhiều biến thể (Màu sắc, Size, Giá ti
 * **Response thành công (`200 OK`)**:
   ```json
   {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "d8e9f10a-1234-5678-9abc-def012345678"
+    "isSuccess": true,
+    "value": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refreshToken": "d8e9f10a-1234-5678-9abc-def012345678"
+    }
   }
   ```
-* **Response thất bại (`401 Unauthorized`)**: Sai tài khoản hoặc mật khẩu.
+* **Response thất bại**:
+  - `400 Bad Request` (`Auth.InvalidCredentials`): Sai tài khoản hoặc mật khẩu.
+  - `400 Bad Request` (`Auth.EmailNotVerified`): Email chưa được kích hoạt OTP.
 
 #### ➔ `POST /api/auth/refresh-token`
-* **Tác dụng**: Cấp lại AccessToken khi token cũ hết hạn.
+* **Tác dụng**: Cấp lại AccessToken khi token cũ hết hạn (Token Rotation).
+* **Cơ chế Token Reuse Detection**: Nếu phát hiện Refresh Token gửi lên đã từng được sử dụng hoặc bị thu hồi trước đó, hệ thống sẽ **thu hồi toàn bộ session đăng nhập của User** để phòng chống token bị kẻ gian đánh cắp.
 * **Request Body (`application/json`)**:
   ```json
   {
@@ -479,6 +538,42 @@ Một sản phẩm có thể có nhiều biến thể (Màu sắc, Size, Giá ti
   }
   ```
 * **Response thành công (`200 OK`)**: Trả về `accessToken` và `refreshToken` mới.
+* **Response thất bại (`400 Bad Request`)**: `Auth.TokenReuseDetected` hoặc `Auth.ExpiredRefreshToken`.
+
+#### ➔ `POST /api/auth/forgot-password`
+* **Tác dụng**: Cấp lại mật khẩu khi người dùng quên mật khẩu. Hệ thống tự động sinh mật khẩu tạm thời ngẫu nhiên an toàn, mã hóa lưu DB và đẩy Hangfire Job gửi mật khẩu mới về email khách.
+* **Request Body (`application/json`)**:
+  ```json
+  {
+    "email": "nguyenvana@gmail.com"
+  }
+  ```
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": null
+  }
+  ```
+
+#### ➔ `POST /api/auth/change-password` *(Yêu cầu Đăng nhập `[Authorize]`)*
+* **Tác dụng**: Người dùng tự đổi mật khẩu tài khoản.
+* **Request Header**: `Authorization: Bearer <ACCESS_TOKEN>`
+* **Request Body (`application/json`)**:
+  ```json
+  {
+    "currentPassword": "OldPassword123!",
+    "newPassword": "NewPassword456@"
+  }
+  ```
+* **Response thành công (`200 OK`)**:
+  ```json
+  {
+    "isSuccess": true,
+    "value": null
+  }
+  ```
+* **Response thất bại (`400 Bad Request`)**: `Auth.WrongPassword` nếu nhập sai mật khẩu cũ.
 
 ---
 

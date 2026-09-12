@@ -12,3 +12,18 @@ public sealed record LoginRequest(
 public sealed record RefreshTokenRequest(
     string AccessToken,
     string RefreshToken);
+
+public sealed record VerifyEmailRequest(
+    string Email,
+    string OtpCode);
+
+public sealed record ResendOtpRequest(
+    string Email);
+
+public sealed record ForgotPasswordRequest(
+    string Email);
+
+public sealed record ChangePasswordRequest(
+    string CurrentPassword,
+    string NewPassword);
+

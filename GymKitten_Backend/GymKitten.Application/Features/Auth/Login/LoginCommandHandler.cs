@@ -56,7 +56,13 @@ public sealed class LoginCommandHandler
             return Result.Failure<LoginResponse>(AuthErrors.InvalidCredentials);
         }
 
-        // 4. Generate access token (with JwtId)
+        // 4. Check if email is verified
+        if (!user.Isemailverified)
+        {
+            return Result.Failure<LoginResponse>(AuthErrors.EmailNotVerified);
+        }
+
+        // 5. Generate access token (with JwtId)
         var (accessToken, jwtId) = _jwtProvider.GenerateAccessToken(user);
 
         // 5. Generate refresh token string
