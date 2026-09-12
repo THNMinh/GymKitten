@@ -66,6 +66,7 @@ public sealed class InventoryRepository : IInventoryRepository
                 i.Variant.Sku,
                 i.Variant.Product.Name,
                 i.Variant.Colorname,
+                i.Variant.Colorhex,
                 i.Variant.Size,
                 i.Quantityonhand,
                 i.Quantityreserved,

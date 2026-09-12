@@ -15,4 +15,7 @@ public interface ISystemLogRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+    Task<(Systemlog? Log, string? UserEmail)> GetByIdAsync(
+        Guid logId,
+        CancellationToken cancellationToken = default);
 }
