@@ -1,5 +1,4 @@
 using GymKitten.API.Extensions;
-using GymKitten.Application.Features.Admin.SystemLogs.Queries.GetSystemLogById;
 using GymKitten.Application.Features.Admin.SystemLogs.Queries.GetSystemLogs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -25,15 +24,6 @@ public class AdminSystemLogsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(query, cancellationToken);
-        return result.MatchOk();
-    }
-
-    [HttpGet("{logId:guid}")]
-    public async Task<IResult> GetSystemLogById(
-        [FromRoute] Guid logId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _sender.Send(new GetSystemLogByIdQuery(logId), cancellationToken);
         return result.MatchOk();
     }
 }

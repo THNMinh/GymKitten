@@ -30,7 +30,6 @@ public sealed class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .AsNoTracking()
-            .Include(o => o.User)
             .Include(o => o.Orderitems)
                 .ThenInclude(i => i.Variant)
                     .ThenInclude(v => v.Productimages)

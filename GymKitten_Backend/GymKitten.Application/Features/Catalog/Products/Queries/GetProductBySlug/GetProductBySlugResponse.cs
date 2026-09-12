@@ -14,6 +14,4 @@ public sealed record GetProductBySlugResponse(
     bool IsActive,
     DateTime CreatedAt,
     List<ProductImageDto> Images,
-    List<ProductVariantDto> Variants,
-    double AverageRating,
-    int ReviewCount);
+    List<ProductVariantDto> Variants);

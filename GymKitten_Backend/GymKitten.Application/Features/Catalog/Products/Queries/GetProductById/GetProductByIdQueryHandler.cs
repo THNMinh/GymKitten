@@ -54,12 +54,6 @@ public sealed class GetProductByIdQueryHandler
                 v.Inventoryitem != null ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved) : 10))
             .ToList();
 
-        var activeReviews = product.Productreviews.Where(r => r.Deletedat == null).ToList();
-        var avgRating = activeReviews.Any()
-            ? Math.Round(activeReviews.Average(r => r.Rating), 1)
-            : 0.0;
-        var reviewCount = activeReviews.Count;
-
         var detailDto = new ProductDetailDto(
             product.Productid,
             product.Categoryid,
@@ -71,9 +65,7 @@ public sealed class GetProductByIdQueryHandler
             product.Isactive,
             product.Createdat,
             imageDtos,
-            variantDtos,
-            avgRating,
-            reviewCount);
+            variantDtos);
 
         return Result.Success(detailDto);
     }

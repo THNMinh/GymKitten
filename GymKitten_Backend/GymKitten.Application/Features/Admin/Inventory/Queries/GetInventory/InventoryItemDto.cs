@@ -5,7 +5,6 @@ public sealed record InventoryItemDto(
     string Sku,
     string ProductName,
     string Color,
-    string? ColorHex,
     string Size,
     int QuantityOnHand,
     int QuantityReserved,

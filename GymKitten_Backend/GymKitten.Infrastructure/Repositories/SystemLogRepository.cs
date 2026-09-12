@@ -69,30 +69,4 @@ public sealed class SystemLogRepository : ISystemLogRepository
 
         return (items, totalCount);
     }
-
-    public async Task<(Systemlog? Log, string? UserEmail)> GetByIdAsync(
-        Guid logId,
-        CancellationToken cancellationToken = default)
-    {
-        var log = await _context.Systemlogs
-            .AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Logid == logId && l.Deletedat == null, cancellationToken);
-
-        if (log is null)
-        {
-            return (null, null);
-        }
-
-        string? userEmail = null;
-        if (log.Userid.HasValue)
-        {
-            userEmail = await _context.Users
-                .AsNoTracking()
-                .Where(u => u.Userid == log.Userid.Value)
-                .Select(u => u.Email)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-
-        return (log, userEmail);
-    }
 }

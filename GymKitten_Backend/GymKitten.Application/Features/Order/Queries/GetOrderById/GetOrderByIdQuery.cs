@@ -9,7 +9,6 @@ public sealed record OrderDetailDto(
     Guid OrderId,
     string OrderCode,
     Guid? UserId,
-    string? UserEmail,
     string ShippingAddress,
     decimal Subtotal,
     decimal ShippingFee,

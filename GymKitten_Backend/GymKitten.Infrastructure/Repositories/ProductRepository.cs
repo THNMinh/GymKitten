@@ -33,7 +33,6 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.Productimages)
             .Include(p => p.Productvariants)
                 .ThenInclude(v => v.Inventoryitem)
-            .Include(p => p.Productreviews)
             .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
     }
 
@@ -44,7 +43,6 @@ public sealed class ProductRepository : IProductRepository
             .Include(p => p.Productimages)
             .Include(p => p.Productvariants)
                 .ThenInclude(v => v.Inventoryitem)
-            .Include(p => p.Productreviews)
             .FirstOrDefaultAsync(p => p.Productid == productId, cancellationToken);
     }
 

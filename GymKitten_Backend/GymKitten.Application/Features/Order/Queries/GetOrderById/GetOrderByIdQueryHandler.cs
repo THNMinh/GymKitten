@@ -62,7 +62,6 @@ public sealed class GetOrderByIdQueryHandler
             order.Orderid,
             order.Ordercode,
             order.Userid,
-            order.User?.Email,
             order.Shippingaddress,
             order.Subtotal,
             order.Shippingfee,
