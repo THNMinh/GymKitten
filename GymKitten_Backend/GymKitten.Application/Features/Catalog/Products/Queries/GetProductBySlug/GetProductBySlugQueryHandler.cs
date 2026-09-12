@@ -60,6 +60,12 @@ public sealed class GetProductBySlugQueryHandler
                 v.Inventoryitem != null ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved) : 10))
             .ToList();
 
+        var activeReviews = product.Productreviews.Where(r => r.Deletedat == null).ToList();
+        var avgRating = activeReviews.Any()
+            ? Math.Round(activeReviews.Average(r => r.Rating), 1)
+            : 0.0;
+        var reviewCount = activeReviews.Count;
+
         var response = new GetProductBySlugResponse(
             product.Productid,
             product.Categoryid,
@@ -71,7 +77,9 @@ public sealed class GetProductBySlugQueryHandler
             product.Isactive,
             product.Createdat,
             images,
-            variants);
+            variants,
+            avgRating,
+            reviewCount);
 
         return Result.Success(response);
     }

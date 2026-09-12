@@ -16,6 +16,8 @@ public record ProductDetailDto(
     bool IsActive,
     DateTime CreatedAt,
     List<ProductImageDto> Images,
-    List<ProductVariantDto> Variants);
+    List<ProductVariantDto> Variants,
+    double AverageRating,
+    int ReviewCount);
 
 public sealed record GetProductByIdQuery(Guid ProductId) : IQuery<Result<ProductDetailDto>>;
