@@ -39,6 +39,19 @@ public sealed class NotificationHubService : INotificationHubService
             .SendAsync("ReceiveNotification", payload, cancellationToken);
     }
 
+    public async Task SendNotificationToAdminsAsync(
+        object payload,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "🚀 [SignalR to Admins] Event: ReceiveNotification | Target: Group Admins | Payload: {Payload}",
+            JsonSerializer.Serialize(payload));
+
+        await _hubContext.Clients
+            .Group("Admins")
+            .SendAsync("ReceiveNotification", payload, cancellationToken);
+    }
+
     public async Task BroadcastNotificationAsync(
         object payload,
         CancellationToken cancellationToken = default)

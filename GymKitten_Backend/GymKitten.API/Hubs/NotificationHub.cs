@@ -44,6 +44,16 @@ public class NotificationHub : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
 
+        var isAdmin = Context.User?.IsInRole("Admin") == true ||
+            string.Equals(Context.User?.FindFirst(ClaimTypes.Role)?.Value, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Context.User?.FindFirst("role")?.Value, "Admin", StringComparison.OrdinalIgnoreCase);
+
+        if (isAdmin)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+            _logger.LogInformation("🛡️ [SignalR Admin Joined Group 'Admins'] UserId: {UserId} | ConnectionId: {ConnectionId}", userId, Context.ConnectionId);
+        }
+
         _logger.LogInformation(
             "📥 [SignalR Connected] UserId: {UserId} | ConnectionId: {ConnectionId}",
             userId, Context.ConnectionId);
@@ -59,6 +69,15 @@ public class NotificationHub : Hub
             _connectionMapping.Remove(userId, Context.ConnectionId);
 
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user_{userId}");
+
+            var isAdmin = Context.User?.IsInRole("Admin") == true ||
+                string.Equals(Context.User?.FindFirst(ClaimTypes.Role)?.Value, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Context.User?.FindFirst("role")?.Value, "Admin", StringComparison.OrdinalIgnoreCase);
+
+            if (isAdmin)
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Admins");
+            }
 
             _logger.LogInformation(
                 "📥 [SignalR Disconnected] UserId: {UserId} | ConnectionId: {ConnectionId}",

@@ -62,6 +62,13 @@ public sealed class UpdateOrderStatusCommandHandler
         var newStatusUpper = request.Status.Trim();
         var previousStatus = order.Currentstatus;
 
+        if (previousStatus.Equals(OrderStatusExtensions.Cancelled, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<UpdateOrderStatusResponse>(new Error(
+                "Order.AlreadyCancelled",
+                "Đơn hàng này đã bị hủy, không thể thay đổi trạng thái nữa."));
+        }
+
         // 1. Shipped Transition: Deduct physical stock Quantityonhand & Quantityreserved
         if (newStatusUpper.Equals(OrderStatusExtensions.Shipped, StringComparison.OrdinalIgnoreCase) &&
             !previousStatus.Equals(OrderStatusExtensions.Shipped, StringComparison.OrdinalIgnoreCase))

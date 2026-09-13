@@ -7,6 +7,8 @@ using GymKitten.Domain.Common;
 using GymKitten.Domain.Entities;
 using GymKitten.Domain.Enums;
 using GymKitten.Domain.Errors;
+using GymKitten.Domain.Events;
+using MediatR;
 
 namespace GymKitten.Application.Features.Order.Commands.CancelMyOrder;
 
@@ -18,6 +20,9 @@ public sealed class CancelMyOrderCommandHandler
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IOrderTrackingRepository _orderTrackingRepository;
     private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly INotificationHubService _notificationHubService;
+    private readonly IPublisher _publisher;
     private readonly ISystemLogService _systemLogService;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -27,6 +32,9 @@ public sealed class CancelMyOrderCommandHandler
         IInventoryRepository inventoryRepository,
         IOrderTrackingRepository orderTrackingRepository,
         IInventoryTransactionRepository inventoryTransactionRepository,
+        INotificationRepository notificationRepository,
+        INotificationHubService notificationHubService,
+        IPublisher publisher,
         ISystemLogService systemLogService,
         IUnitOfWork unitOfWork)
     {
@@ -35,6 +43,9 @@ public sealed class CancelMyOrderCommandHandler
         _inventoryRepository = inventoryRepository;
         _orderTrackingRepository = orderTrackingRepository;
         _inventoryTransactionRepository = inventoryTransactionRepository;
+        _notificationRepository = notificationRepository;
+        _notificationHubService = notificationHubService;
+        _publisher = publisher;
         _systemLogService = systemLogService;
         _unitOfWork = unitOfWork;
     }
@@ -54,7 +65,10 @@ public sealed class CancelMyOrderCommandHandler
             return Result.Failure<CancelMyOrderResponse>(OrderErrors.AccessDenied);
         }
 
-        if (!order.Currentstatus.Equals(OrderStatusExtensions.Pending, StringComparison.OrdinalIgnoreCase))
+        var isPending = order.Currentstatus.Equals(OrderStatusExtensions.Pending, StringComparison.OrdinalIgnoreCase);
+        var isProcessing = order.Currentstatus.Equals(OrderStatusExtensions.Processing, StringComparison.OrdinalIgnoreCase);
+
+        if (!isPending && !isProcessing)
         {
             return Result.Failure<CancelMyOrderResponse>(OrderErrors.CannotCancelNonPendingOrder);
         }
@@ -110,11 +124,58 @@ public sealed class CancelMyOrderCommandHandler
         };
         await _orderTrackingRepository.AddAsync(tracking, cancellationToken);
 
+        // 1. Create and save customer notification if user is authenticated
+        var customerIdentifier = _userContext.Email ?? "Khách hàng";
+        if (order.Userid.HasValue)
+        {
+            var customerNotification = new Notification
+            {
+                Notificationid = Guid.NewGuid(),
+                Userid = order.Userid.Value,
+                Title = $"Hủy đơn hàng #{order.Ordercode} thành công",
+                Content = $"Đơn hàng #{order.Ordercode} của bạn đã được hủy thành công. Tồn kho đã được giải phóng.",
+                Type = "Order",
+                Isread = false,
+                Targeturl = "/account",
+                Createdat = DateTime.UtcNow,
+                Updatedat = DateTime.UtcNow
+            };
+            await _notificationRepository.AddAsync(customerNotification, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // 2. Dispatch real-time SignalR notification to all Admins
+        var adminPayload = new
+        {
+            NotificationId = Guid.NewGuid(),
+            Title = $"Khách hàng hủy đơn #{order.Ordercode}",
+            Content = $"Khách hàng ({customerIdentifier}) đã hủy đơn #{order.Ordercode}. Tồn kho đã được hoàn lại.",
+            Type = "Order",
+            TargetUrl = "/admin/orders",
+            CreatedAt = DateTime.UtcNow,
+            IsRead = false,
+            OrderId = order.Orderid,
+            OrderCode = order.Ordercode,
+            NewStatus = OrderStatusExtensions.Cancelled
+        };
+        await _notificationHubService.SendNotificationToAdminsAsync(adminPayload, cancellationToken);
+
+        // 3. Publish domain event to notify customer & log system action
+        if (order.Userid.HasValue)
+        {
+            await _publisher.Publish(new OrderStatusChangedDomainEvent(
+                order.Orderid,
+                order.Userid.Value,
+                order.Ordercode ?? order.Orderid.ToString()[..8],
+                OrderStatusExtensions.Cancelled,
+                $"Đơn hàng #{order.Ordercode} của bạn đã được hủy thành công."
+            ), cancellationToken);
+        }
 
         await _systemLogService.LogAsync(
             "CancelOrder",
-            $"Customer cancelled order #{order.Ordercode}. Released reserved inventory.",
+            $"Customer cancelled order #{order.Ordercode}. Released reserved inventory and notified admin.",
             "Information",
             _userContext.UserId,
             cancellationToken);
