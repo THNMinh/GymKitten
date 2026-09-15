@@ -13,4 +13,16 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 
     void Update(User user);
+
+    void Delete(User user);
+
+    Task<(List<User> Users, int TotalCount)> SearchUsersAsync(
+        string? searchTerm,
+        string? role,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<User?> GetByIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

@@ -64,9 +64,7 @@ public sealed class UpdateOrderStatusCommandHandler
 
         if (previousStatus.Equals(OrderStatusExtensions.Cancelled, StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Failure<UpdateOrderStatusResponse>(new Error(
-                "Order.AlreadyCancelled",
-                "Đơn hàng này đã bị hủy, không thể thay đổi trạng thái nữa."));
+            return Result.Failure<UpdateOrderStatusResponse>(OrderErrors.AlreadyCancelled);
         }
 
         // 1. Shipped Transition: Deduct physical stock Quantityonhand & Quantityreserved

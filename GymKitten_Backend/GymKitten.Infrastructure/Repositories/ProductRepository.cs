@@ -85,8 +85,23 @@ public sealed class ProductRepository : IProductRepository
 
         if (!string.IsNullOrWhiteSpace(gender) && !gender.Equals("All", StringComparison.OrdinalIgnoreCase))
         {
-            var genderTerm = gender.Trim().ToLower();
-            query = query.Where(p => p.Gender.ToLower() == genderTerm || p.Gender.ToLower() == "unisex");
+            var g = gender.Trim().ToLower();
+            if (g == "men" || g == "nam" || g == "male")
+            {
+                query = query.Where(p => p.Gender.ToLower() == "men" || p.Gender.ToLower() == "nam" || p.Gender.ToLower() == "male");
+            }
+            else if (g == "women" || g == "nu" || g == "nữ" || g == "female")
+            {
+                query = query.Where(p => p.Gender.ToLower() == "women" || p.Gender.ToLower() == "nu" || p.Gender.ToLower() == "nữ" || p.Gender.ToLower() == "female");
+            }
+            else if (g == "unisex")
+            {
+                query = query.Where(p => p.Gender.ToLower() == "unisex");
+            }
+            else
+            {
+                query = query.Where(p => p.Gender.ToLower() == g);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(fitType))

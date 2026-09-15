@@ -39,4 +39,8 @@ public static class OrderErrors
     public static readonly Error AccessDenied = new(
         "Order.AccessDenied",
         "You do not have permission to access or modify this order.");
+
+    public static readonly Error AlreadyCancelled = new(
+        "Order.AlreadyCancelled",
+        "Đơn hàng này đã bị hủy, không thể thay đổi trạng thái nữa.");
 }
