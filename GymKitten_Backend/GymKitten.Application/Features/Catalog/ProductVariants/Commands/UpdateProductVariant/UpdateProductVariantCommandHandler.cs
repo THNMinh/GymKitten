@@ -51,6 +51,25 @@ public sealed class UpdateProductVariantCommandHandler
             variant.Sku = request.Sku.Trim();
         }
 
+        // 3. Check duplicate color + size if either changed
+        var newColor = !string.IsNullOrWhiteSpace(request.ColorName) ? request.ColorName.Trim() : variant.Colorname;
+        var newSize = !string.IsNullOrWhiteSpace(request.Size) ? request.Size.Trim() : variant.Size;
+
+        if (!string.Equals(newColor, variant.Colorname, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(newSize, variant.Size, StringComparison.OrdinalIgnoreCase))
+        {
+            var isDuplicate = await _productVariantRepository.ExistsByProductColorAndSizeAsync(
+                variant.Productid,
+                newColor,
+                newSize,
+                variant.Variantid,
+                cancellationToken);
+            if (isDuplicate)
+            {
+                return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.DuplicateColorAndSize);
+            }
+        }
+
         // 3. Update properties if provided
         if (!string.IsNullOrWhiteSpace(request.ColorName))
         {

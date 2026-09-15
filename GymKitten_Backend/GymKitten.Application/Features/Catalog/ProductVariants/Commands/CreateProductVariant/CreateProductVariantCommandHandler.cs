@@ -53,7 +53,25 @@ public sealed class CreateProductVariantCommandHandler
             return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.InvalidPrice);
         }
 
-        var skuExists = await _productVariantRepository.ExistsBySkuAsync(request.Sku.Trim(), cancellationToken);
+        // 3. Prevent duplicate Size for the same Color on this Product
+        var duplicateColorAndSize = await _productVariantRepository.ExistsByProductColorAndSizeAsync(
+            request.ProductId,
+            request.ColorName,
+            request.Size,
+            null,
+            cancellationToken);
+        if (duplicateColorAndSize)
+        {
+            return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.DuplicateColorAndSize);
+        }
+
+        // 4. Determine SKU (auto-fallback if blank)
+        var finalSku = !string.IsNullOrWhiteSpace(request.Sku)
+            ? request.Sku.Trim()
+            : $"GK-{product.Slug.ToUpper()}-{request.ColorName.Trim().ToUpper()}-{request.Size.Trim().ToUpper()}";
+        finalSku = System.Text.RegularExpressions.Regex.Replace(finalSku, @"[^a-zA-Z0-9_-]", "-");
+
+        var skuExists = await _productVariantRepository.ExistsBySkuAsync(finalSku, cancellationToken);
         if (skuExists)
         {
             return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.SkuAlreadyExists);
@@ -65,7 +83,7 @@ public sealed class CreateProductVariantCommandHandler
         {
             Variantid = Guid.NewGuid(),
             Productid = request.ProductId,
-            Sku = request.Sku.Trim(),
+            Sku = finalSku,
             Colorname = request.ColorName.Trim(),
             Colorhex = request.ColorHex?.Trim(),
             Size = request.Size.Trim(),

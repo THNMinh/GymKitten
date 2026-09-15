@@ -43,6 +43,29 @@ public sealed class ProductVariantRepository : IProductVariantRepository
             .AnyAsync(v => v.Sku == sku && v.Variantid != variantId, cancellationToken);
     }
 
+    public async Task<bool> ExistsByProductColorAndSizeAsync(
+        Guid productId,
+        string colorName,
+        string size,
+        Guid? excludeVariantId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var targetColor = colorName.Trim().ToLower();
+        var targetSize = size.Trim().ToLower();
+
+        var query = _context.Productvariants
+            .Where(v => v.Productid == productId &&
+                        v.Colorname.ToLower() == targetColor &&
+                        v.Size.ToLower() == targetSize);
+
+        if (excludeVariantId.HasValue)
+        {
+            query = query.Where(v => v.Variantid != excludeVariantId.Value);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Productvariant variant, CancellationToken cancellationToken = default)
     {
         await _context.Productvariants.AddAsync(variant, cancellationToken);

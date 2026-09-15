@@ -79,9 +79,10 @@ public sealed class RestockCommandHandler
         }
 
         var performer = _userContext.Email ?? "Admin";
-        var refText = !string.IsNullOrWhiteSpace(request.Note)
-            ? $"{request.Note} | By: {performer}"
-            : $"By: {performer}";
+        var batchCode = !string.IsNullOrWhiteSpace(request.Note)
+            ? request.Note.Trim()
+            : $"RESTOCK-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
+        var refText = $"{batchCode} | By: {performer}";
         if (refText.Length > 100) refText = refText[..100];
 
         // Audit transaction

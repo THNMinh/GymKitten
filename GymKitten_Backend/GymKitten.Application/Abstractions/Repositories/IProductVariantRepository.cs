@@ -12,6 +12,13 @@ public interface IProductVariantRepository
 
     Task<bool> ExistsBySkuExcludingIdAsync(string sku, Guid variantId, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsByProductColorAndSizeAsync(
+        Guid productId,
+        string colorName,
+        string size,
+        Guid? excludeVariantId = null,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Productvariant variant, CancellationToken cancellationToken = default);
 
     void Update(Productvariant variant);

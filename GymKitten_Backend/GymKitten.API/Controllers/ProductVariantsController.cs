@@ -30,6 +30,17 @@ public class ProductVariantsController : ControllerBase
         return result.MatchOk();
     }
 
+    [HttpGet("{productId:guid}/variants/by-color")]
+    public async Task<IResult> GetVariantsGroupedByColor(
+        Guid productId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GymKitten.Application.Features.Catalog.ProductVariants.Queries.GetVariantsGroupedByColor.GetVariantsGroupedByColorQuery(productId),
+            cancellationToken);
+        return result.MatchOk();
+    }
+
     [HttpPost("variants")]
     [Authorize(Roles = "Admin,admin")]
     public async Task<IResult> CreateProductVariant(
