@@ -59,6 +59,8 @@ public sealed class ProductRepository : IProductRepository
         List<string>? sizes,
         decimal? minPrice,
         decimal? maxPrice,
+        decimal? minDiscountPercent,
+        string? sort,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -168,12 +170,45 @@ public sealed class ProductRepository : IProductRepository
             query = query.Where(p => p.Productvariants.Any(v => v.Price <= maxPrice.Value));
         }
 
+        if (minDiscountPercent.HasValue && minDiscountPercent.Value > 0)
+        {
+            query = query.Where(p => p.Productvariants.Any(v =>
+                v.Originalprice != null &&
+                v.Originalprice > 0 &&
+                (v.Originalprice - v.Price) * 100m >= minDiscountPercent.Value * v.Originalprice));
+        }
+
         // Count First
         var total = await query.CountAsync(cancellationToken);
 
+        // Sorting
+        var normalizedSort = sort?.Trim().ToLowerInvariant();
+        if (normalizedSort == "rating" || normalizedSort == "best-seller" || normalizedSort == "bestseller" || normalizedSort == "popular")
+        {
+            query = query
+                .OrderByDescending(p => p.Productreviews.Count(r => r.Deletedat == null) > 0)
+                .ThenByDescending(p => p.Productreviews.Count(r => r.Deletedat == null))
+                .ThenByDescending(p => p.Createdat);
+        }
+        else if (normalizedSort == "price-asc")
+        {
+            query = query
+                .OrderBy(p => p.Productvariants.Min(v => (decimal?)v.Price) ?? 0m)
+                .ThenByDescending(p => p.Createdat);
+        }
+        else if (normalizedSort == "price-desc")
+        {
+            query = query
+                .OrderByDescending(p => p.Productvariants.Max(v => (decimal?)v.Price) ?? 0m)
+                .ThenByDescending(p => p.Createdat);
+        }
+        else
+        {
+            query = query.OrderByDescending(p => p.Createdat);
+        }
+
         // Take Later
         var products = await query
-            .OrderByDescending(p => p.Createdat)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

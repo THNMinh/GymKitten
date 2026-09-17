@@ -23,6 +23,8 @@ public interface IProductRepository
         List<string>? sizes,
         decimal? minPrice,
         decimal? maxPrice,
+        decimal? minDiscountPercent,
+        string? sort,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

@@ -37,6 +37,8 @@ public class ProductsController : ControllerBase
         [FromQuery] string? sizes,
         [FromQuery] decimal? minPrice,
         [FromQuery] decimal? maxPrice,
+        [FromQuery] decimal? minDiscountPercent,
+        [FromQuery] string? sort,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -68,6 +70,8 @@ public class ProductsController : ControllerBase
             sizeList,
             minPrice,
             maxPrice,
+            minDiscountPercent,
+            sort,
             page,
             pageSize);
 

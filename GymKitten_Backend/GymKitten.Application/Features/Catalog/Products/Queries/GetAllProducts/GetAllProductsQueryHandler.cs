@@ -33,6 +33,8 @@ public sealed class GetAllProductsQueryHandler
             request.Sizes,
             request.MinPrice,
             request.MaxPrice,
+            request.MinDiscountPercent,
+            request.Sort,
             request.Page,
             request.PageSize,
             cancellationToken);

@@ -14,5 +14,7 @@ public sealed record GetAllProductsQuery(
     List<string>? Sizes = null,
     decimal? MinPrice = null,
     decimal? MaxPrice = null,
+    decimal? MinDiscountPercent = null,
+    string? Sort = null,
     int Page = 1,
     int PageSize = 10) : IQuery<Result<GetAllProductsResponse>>;
