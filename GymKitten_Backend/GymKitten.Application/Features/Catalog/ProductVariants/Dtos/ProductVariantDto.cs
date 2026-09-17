@@ -10,4 +10,5 @@ public sealed record ProductVariantDto(
     decimal Price,
     decimal? OriginalPrice,
     int? WeightGrams,
-    int Available = 10);
+    int Available = 0,
+    int AvailableStock = 0);

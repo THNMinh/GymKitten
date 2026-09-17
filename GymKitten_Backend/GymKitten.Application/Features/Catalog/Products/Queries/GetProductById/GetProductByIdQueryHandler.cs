@@ -41,17 +41,25 @@ public sealed class GetProductByIdQueryHandler
         var variantDtos = product.Productvariants
             .OrderBy(v => v.Colorname)
             .ThenBy(v => v.Size)
-            .Select(v => new ProductVariantDto(
-                v.Variantid,
-                v.Productid,
-                v.Sku,
-                v.Colorname,
-                v.Colorhex,
-                v.Size,
-                v.Price,
-                v.Originalprice,
-                v.Weightgrams,
-                v.Inventoryitem != null ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved) : 10))
+            .Select(v =>
+            {
+                var stock = v.Inventoryitem != null
+                    ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved)
+                    : 0;
+
+                return new ProductVariantDto(
+                    v.Variantid,
+                    v.Productid,
+                    v.Sku,
+                    v.Colorname,
+                    v.Colorhex,
+                    v.Size,
+                    v.Price,
+                    v.Originalprice,
+                    v.Weightgrams,
+                    Available: stock,
+                    AvailableStock: stock);
+            })
             .ToList();
 
         var activeReviews = product.Productreviews.Where(r => r.Deletedat == null).ToList();

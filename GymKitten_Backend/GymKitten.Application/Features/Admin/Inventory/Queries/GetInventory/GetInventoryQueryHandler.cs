@@ -41,12 +41,46 @@ public sealed class GetInventoryQueryHandler
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
+        var itemList = items.ToList();
+
+        var groupedProducts = itemList
+            .GroupBy(i => new { i.ProductId, i.ProductName })
+            .Select(p =>
+            {
+                var colorGroups = p
+                    .GroupBy(c => new { ColorName = c.Color.Trim(), c.ColorHex })
+                    .Select(cg => new ColorInventoryGroupDto(
+                        Color: cg.Key.ColorName,
+                        ColorHex: cg.Key.ColorHex,
+                        QuantityOnHand: cg.Sum(s => s.QuantityOnHand),
+                        QuantityReserved: cg.Sum(s => s.QuantityReserved),
+                        AvailableStock: cg.Sum(s => s.AvailableStock),
+                        Sizes: cg.OrderBy(s => s.Size).ToList(),
+                        ColorName: cg.Key.ColorName
+                    ))
+                    .OrderBy(cg => cg.Color)
+                    .ToList();
+
+                return new ProductInventoryGroupDto(
+                    p.Key.ProductId,
+                    p.Key.ProductName,
+                    p.Sum(i => i.QuantityOnHand),
+                    p.Sum(i => i.QuantityReserved),
+                    p.Sum(i => i.AvailableStock),
+                    p.Count(),
+                    colorGroups
+                );
+            })
+            .OrderBy(p => p.ProductName)
+            .ToList();
+
         var response = new GetInventoryResponse(
-            items.ToList(),
+            itemList,
             totalCount,
             page,
             pageSize,
-            totalPages);
+            totalPages,
+            groupedProducts);
 
         return Result.Success(response);
     }

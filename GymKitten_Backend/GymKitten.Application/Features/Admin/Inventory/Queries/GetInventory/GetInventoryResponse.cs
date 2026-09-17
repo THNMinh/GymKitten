@@ -5,4 +5,5 @@ public sealed record GetInventoryResponse(
     int TotalCount,
     int Page,
     int PageSize,
-    int TotalPages);
+    int TotalPages,
+    List<ProductInventoryGroupDto>? GroupedProducts = null);

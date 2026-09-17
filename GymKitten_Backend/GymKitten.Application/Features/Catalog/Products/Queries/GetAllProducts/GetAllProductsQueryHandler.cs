@@ -61,7 +61,7 @@ public sealed class GetAllProductsQueryHandler
                 {
                     var stock = v.Inventoryitem != null
                         ? Math.Max(0, v.Inventoryitem.Quantityonhand - v.Inventoryitem.Quantityreserved)
-                        : 10;
+                        : 0;
 
                     var vImg = p.Productimages.FirstOrDefault(img => img.Variantid == v.Variantid)?.Imageurl
                              ?? primaryImage?.Imageurl;

@@ -35,43 +35,68 @@ public sealed class InventoryRepository : IInventoryRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Inventoryitems
+        var productQuery = _context.Products
             .AsNoTracking()
-            .Include(i => i.Variant)
-                .ThenInclude(v => v.Product)
+            .Where(p => p.Deletedat == null && p.Productvariants.Any(v => v.Deletedat == null))
             .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(sku))
-        {
-            var skuTerm = sku.Trim().ToLower();
-            query = query.Where(i => i.Variant.Sku.ToLower().Contains(skuTerm));
-        }
 
         if (!string.IsNullOrWhiteSpace(productName))
         {
             var nameTerm = productName.Trim().ToLower();
-            query = query.Where(i => i.Variant.Product.Name.ToLower().Contains(nameTerm));
+            productQuery = productQuery.Where(p => p.Name.ToLower().Contains(nameTerm));
         }
 
-        // Count First
-        var totalCount = await query.CountAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(sku))
+        {
+            var skuTerm = sku.Trim().ToLower();
+            productQuery = productQuery.Where(p => p.Productvariants.Any(v => v.Deletedat == null && v.Sku.ToLower().Contains(skuTerm)));
+        }
 
-        // Take Later
-        var items = await query
-            .OrderBy(i => i.Variant.Sku)
+        var totalCount = await productQuery.CountAsync(cancellationToken);
+
+        var pagedProducts = await productQuery
+            .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(i => new InventoryItemDto(
-                i.Variantid,
-                i.Variant.Sku,
-                i.Variant.Product.Name,
-                i.Variant.Colorname,
-                i.Variant.Colorhex,
-                i.Variant.Size,
-                i.Quantityonhand,
-                i.Quantityreserved,
-                i.Quantityonhand - i.Quantityreserved))
+            .Include(p => p.Productvariants.Where(v => v.Deletedat == null))
+                .ThenInclude(v => v.Inventoryitem)
             .ToListAsync(cancellationToken);
+
+        var items = new List<InventoryItemDto>();
+
+        foreach (var p in pagedProducts)
+        {
+            var variants = p.Productvariants
+                .Where(v => v.Deletedat == null)
+                .OrderBy(v => v.Colorname)
+                .ThenBy(v => v.Size);
+
+            foreach (var v in variants)
+            {
+                if (!string.IsNullOrWhiteSpace(sku))
+                {
+                    var skuTerm = sku.Trim().ToLower();
+                    if (!v.Sku.ToLower().Contains(skuTerm))
+                        continue;
+                }
+
+                var onHand = v.Inventoryitem?.Quantityonhand ?? 0;
+                var reserved = v.Inventoryitem?.Quantityreserved ?? 0;
+                var available = Math.Max(0, onHand - reserved);
+
+                items.Add(new InventoryItemDto(
+                    v.Variantid,
+                    v.Sku,
+                    p.Productid,
+                    p.Name,
+                    v.Colorname,
+                    v.Colorhex,
+                    v.Size,
+                    onHand,
+                    reserved,
+                    available));
+            }
+        }
 
         return (items, totalCount);
     }
