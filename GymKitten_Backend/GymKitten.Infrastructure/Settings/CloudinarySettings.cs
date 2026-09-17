@@ -1,0 +1,14 @@
+namespace GymKitten.Infrastructure.Settings;
+
+public sealed class CloudinarySettings
+{
+    public const string SectionName = "CloudinarySettings";
+
+    public string CloudName { get; init; } = string.Empty;
+
+    public string ApiKey { get; init; } = string.Empty;
+
+    public string ApiSecret { get; init; } = string.Empty;
+
+    public string Folder { get; init; } = "gymkitten";
+}
