@@ -63,4 +63,33 @@ public sealed class NotificationHubService : INotificationHubService
         await _hubContext.Clients.All
             .SendAsync("ReceiveNotification", payload, cancellationToken);
     }
+
+    public async Task SendNewOrderPlacedToAdminsAsync(
+        object payload,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "🚀 [SignalR to Admins] Event: NewOrderPlaced | Target: Group Admins | Payload: {Payload}",
+            JsonSerializer.Serialize(payload));
+
+        await _hubContext.Clients
+            .Group("Admins")
+            .SendAsync("NewOrderPlaced", payload, cancellationToken);
+    }
+
+    public async Task SendOrderTrackingUpdatedAsync(
+        Guid userId,
+        object payload,
+        CancellationToken cancellationToken = default)
+    {
+        var targetGroup = $"user_{userId}";
+
+        _logger.LogInformation(
+            "🚀 [SignalR to User] Event: OrderTrackingUpdated | Target: Group {TargetGroup} | Payload: {Payload}",
+            targetGroup, JsonSerializer.Serialize(payload));
+
+        await _hubContext.Clients
+            .Group(targetGroup)
+            .SendAsync("OrderTrackingUpdated", payload, cancellationToken);
+    }
 }

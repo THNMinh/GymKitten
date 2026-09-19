@@ -18,6 +18,7 @@ public sealed class ProcessMomoIpnCommandHandler
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IOrderTrackingRepository _orderTrackingRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationHubService _notificationHubService;
 
     public ProcessMomoIpnCommandHandler(
         IMomoService momoService,
@@ -25,7 +26,8 @@ public sealed class ProcessMomoIpnCommandHandler
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IOrderTrackingRepository orderTrackingRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        INotificationHubService notificationHubService)
     {
         _momoService = momoService;
         _paymentTransactionRepository = paymentTransactionRepository;
@@ -33,6 +35,7 @@ public sealed class ProcessMomoIpnCommandHandler
         _inventoryRepository = inventoryRepository;
         _orderTrackingRepository = orderTrackingRepository;
         _unitOfWork = unitOfWork;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<Result<ProcessMomoIpnCommandResponse>> Handle(
@@ -161,6 +164,33 @@ public sealed class ProcessMomoIpnCommandHandler
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (request.ResultCode == 0 && order != null)
+        {
+            var customerName = order.User?.Fullname;
+            if (string.IsNullOrWhiteSpace(customerName))
+            {
+                customerName = !string.IsNullOrWhiteSpace(order.User?.Email)
+                    ? order.User.Email.Split('@')[0]
+                    : "Khách hàng";
+            }
+
+            var adminNotificationPayload = new
+            {
+                orderId = order.Orderid,
+                orderCode = order.Ordercode,
+                customerName = customerName,
+                customerEmail = order.User?.Email ?? "customer@gymkitten.com",
+                totalAmount = order.Totalamount,
+                paymentMethod = order.Paymentmethod,
+                paymentStatus = order.Paymentstatus,
+                itemCount = order.Orderitems.Sum(i => i.Quantity),
+                createdAt = order.Createdat,
+                targetUrl = "/admin/orders"
+            };
+
+            await _notificationHubService.SendNewOrderPlacedToAdminsAsync(adminNotificationPayload, cancellationToken);
+        }
 
         return Result.Success(new ProcessMomoIpnCommandResponse(true, request.ResultCode == 0 ? "Payment Success" : "Payment Failed"));
     }

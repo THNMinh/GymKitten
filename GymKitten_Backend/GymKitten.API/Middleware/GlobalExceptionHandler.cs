@@ -26,6 +26,16 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 StatusCodes.Status400BadRequest,
                 "Validation Error",
                 string.Join(" | ", validationException.Errors.Select(e => e.ErrorMessage))),
+            Microsoft.EntityFrameworkCore.DbUpdateException dbEx when dbEx.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23505" => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                pgEx.ConstraintName != null && pgEx.ConstraintName.Contains("sku", StringComparison.OrdinalIgnoreCase)
+                    ? "Mã SKU này đã tồn tại trong hệ thống. Vui lòng nhập mã SKU khác."
+                    : "Dữ liệu bị trùng lặp vi phạm ràng buộc duy nhất trong cơ sở dữ liệu."),
+            Microsoft.EntityFrameworkCore.DbUpdateException dbEx when dbEx.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23503" => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "Không thể thực hiện thao tác do có dữ liệu liên quan đang tồn tại trong hệ thống."),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal Server Error",

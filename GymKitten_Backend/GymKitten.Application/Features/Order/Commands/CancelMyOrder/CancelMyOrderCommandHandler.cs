@@ -169,7 +169,13 @@ public sealed class CancelMyOrderCommandHandler
                 order.Userid.Value,
                 order.Ordercode ?? order.Orderid.ToString()[..8],
                 OrderStatusExtensions.Cancelled,
-                $"Đơn hàng #{order.Ordercode} của bạn đã được hủy thành công."
+                $"Đơn hàng #{order.Ordercode} của bạn đã được hủy thành công.",
+                tracking.Trackingid,
+                tracking.Title,
+                tracking.Description,
+                tracking.Location,
+                tracking.Timestamp,
+                tracking.Updatedby
             ), cancellationToken);
         }
 

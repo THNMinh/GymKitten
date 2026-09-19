@@ -7,5 +7,11 @@ public sealed record OrderStatusChangedDomainEvent(
     Guid UserId,
     string OrderCode,
     string NewStatus,
-    string StatusDescription
+    string StatusDescription,
+    Guid? TrackingId = null,
+    string? Title = null,
+    string? Description = null,
+    string? Location = null,
+    DateTime? Timestamp = null,
+    string? UpdatedBy = null
 ) : IDomainEvent;

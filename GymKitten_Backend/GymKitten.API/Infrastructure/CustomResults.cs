@@ -31,6 +31,7 @@ public static class CustomResults
             return StatusCodes.Status404NotFound;
 
         if (errorCode.Contains("AlreadyExists", StringComparison.OrdinalIgnoreCase) ||
+            errorCode.Contains("Duplicate", StringComparison.OrdinalIgnoreCase) ||
             errorCode.Contains("Conflict", StringComparison.OrdinalIgnoreCase))
             return StatusCodes.Status409Conflict;
 

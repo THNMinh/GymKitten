@@ -174,7 +174,13 @@ public sealed class UpdateOrderStatusCommandHandler
                 order.Userid.Value,
                 order.Ordercode ?? order.Orderid.ToString()[..8],
                 order.Currentstatus,
-                $"Đơn hàng #{order.Ordercode} của bạn đã đổi trạng thái thành: {order.Currentstatus}"
+                $"Đơn hàng #{order.Ordercode} của bạn đã đổi trạng thái thành: {order.Currentstatus}",
+                tracking.Trackingid,
+                tracking.Title,
+                tracking.Description,
+                tracking.Location,
+                tracking.Timestamp,
+                tracking.Updatedby
             ), cancellationToken);
         }
 

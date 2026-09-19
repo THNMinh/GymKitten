@@ -41,14 +41,15 @@ public sealed class UpdateProductVariantCommandHandler
         }
 
         // 2. Check SKU uniqueness if SKU changed
-        if (!string.IsNullOrWhiteSpace(request.Sku) && variant.Sku != request.Sku.Trim())
+        if (!string.IsNullOrWhiteSpace(request.Sku) && !string.Equals(variant.Sku, request.Sku.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            var skuExists = await _productVariantRepository.ExistsBySkuExcludingIdAsync(request.Sku.Trim(), request.VariantId, cancellationToken);
+            var cleanSku = request.Sku.Trim().ToUpperInvariant();
+            var skuExists = await _productVariantRepository.ExistsBySkuExcludingIdAsync(cleanSku, request.VariantId, cancellationToken);
             if (skuExists)
             {
                 return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.SkuAlreadyExists);
             }
-            variant.Sku = request.Sku.Trim();
+            variant.Sku = cleanSku;
         }
 
         // 3. Check duplicate color + size if either changed
@@ -112,7 +113,24 @@ public sealed class UpdateProductVariantCommandHandler
         variant.Updatedat = DateTime.UtcNow;
 
         _productVariantRepository.Update(variant);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+        {
+            var innerMsg = ex.InnerException?.Message ?? ex.Message;
+            if (innerMsg.Contains("23505") || innerMsg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
+            {
+                if (innerMsg.Contains("sku", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.SkuAlreadyExists);
+                }
+                return Result.Failure<UpdateProductVariantResponse>(ProductVariantErrors.DuplicateColorAndSize);
+            }
+            throw;
+        }
 
         return Result.Success(new UpdateProductVariantResponse(variant.Variantid));
     }

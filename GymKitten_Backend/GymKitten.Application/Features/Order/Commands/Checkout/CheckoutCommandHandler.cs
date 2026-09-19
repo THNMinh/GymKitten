@@ -24,6 +24,7 @@ public sealed class CheckoutCommandHandler
     private readonly IMomoService _momoService;
     private readonly IOrderAutoCancelService _orderAutoCancelService;
     private readonly IInventoryTransactionRepository _inventoryTransactionRepository;
+    private readonly INotificationHubService _notificationHubService;
 
     public CheckoutCommandHandler(
         IUserContext userContext,
@@ -36,7 +37,8 @@ public sealed class CheckoutCommandHandler
         IVnPayService vnPayService,
         IMomoService momoService,
         IOrderAutoCancelService orderAutoCancelService,
-        IInventoryTransactionRepository inventoryTransactionRepository)
+        IInventoryTransactionRepository inventoryTransactionRepository,
+        INotificationHubService notificationHubService)
     {
         _userContext = userContext;
         _productVariantRepository = productVariantRepository;
@@ -49,6 +51,7 @@ public sealed class CheckoutCommandHandler
         _momoService = momoService;
         _orderAutoCancelService = orderAutoCancelService;
         _inventoryTransactionRepository = inventoryTransactionRepository;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<Result<CheckoutCommandResponse>> Handle(
@@ -301,6 +304,29 @@ public sealed class CheckoutCommandHandler
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (paymentMethodUpper == "COD")
+        {
+            var customerName = !string.IsNullOrWhiteSpace(_userContext.Email)
+                ? _userContext.Email.Split('@')[0]
+                : "Khách hàng";
+
+            var adminNotificationPayload = new
+            {
+                orderId = order.Orderid,
+                orderCode = order.Ordercode,
+                customerName = customerName,
+                customerEmail = _userContext.Email ?? "guest@gymkitten.com",
+                totalAmount = order.Totalamount,
+                paymentMethod = order.Paymentmethod,
+                paymentStatus = order.Paymentstatus,
+                itemCount = order.Orderitems.Sum(i => i.Quantity),
+                createdAt = order.Createdat,
+                targetUrl = "/admin/orders"
+            };
+
+            await _notificationHubService.SendNewOrderPlacedToAdminsAsync(adminNotificationPayload, cancellationToken);
+        }
 
         return Result.Success(new CheckoutCommandResponse(
             order.Orderid,

@@ -1,6 +1,7 @@
 using GymKitten.Application.Abstractions.Data;
 using GymKitten.Application.Abstractions.Messaging;
 using GymKitten.Application.Abstractions.Repositories;
+using GymKitten.Application.Abstractions.Services;
 using GymKitten.Domain.Common;
 
 namespace GymKitten.Application.Features.Payment.Commands.ProcessVnPayIpn;
@@ -12,17 +13,20 @@ public sealed class ProcessVnPayIpnCommandHandler
     private readonly IOrderRepository _orderRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationHubService _notificationHubService;
 
     public ProcessVnPayIpnCommandHandler(
         IPaymentTransactionRepository paymentTransactionRepository,
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        INotificationHubService notificationHubService)
     {
         _paymentTransactionRepository = paymentTransactionRepository;
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<Result<ProcessVnPayIpnCommandResponse>> Handle(
@@ -104,6 +108,33 @@ public sealed class ProcessVnPayIpnCommandHandler
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (order != null)
+        {
+            var customerName = order.User?.Fullname;
+            if (string.IsNullOrWhiteSpace(customerName))
+            {
+                customerName = !string.IsNullOrWhiteSpace(order.User?.Email)
+                    ? order.User.Email.Split('@')[0]
+                    : "Khách hàng";
+            }
+
+            var adminNotificationPayload = new
+            {
+                orderId = order.Orderid,
+                orderCode = order.Ordercode,
+                customerName = customerName,
+                customerEmail = order.User?.Email ?? "customer@gymkitten.com",
+                totalAmount = order.Totalamount,
+                paymentMethod = order.Paymentmethod,
+                paymentStatus = order.Paymentstatus,
+                itemCount = order.Orderitems.Sum(i => i.Quantity),
+                createdAt = order.Createdat,
+                targetUrl = "/admin/orders"
+            };
+
+            await _notificationHubService.SendNewOrderPlacedToAdminsAsync(adminNotificationPayload, cancellationToken);
+        }
 
         return Result.Success(new ProcessVnPayIpnCommandResponse(true, "00", "Confirm Success"));
     }

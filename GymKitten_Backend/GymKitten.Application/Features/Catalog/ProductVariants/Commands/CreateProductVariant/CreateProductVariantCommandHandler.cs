@@ -67,8 +67,8 @@ public sealed class CreateProductVariantCommandHandler
 
         // 4. Determine SKU (auto-fallback if blank)
         var finalSku = !string.IsNullOrWhiteSpace(request.Sku)
-            ? request.Sku.Trim()
-            : $"GK-{product.Slug.ToUpper()}-{request.ColorName.Trim().ToUpper()}-{request.Size.Trim().ToUpper()}";
+            ? request.Sku.Trim().ToUpperInvariant()
+            : $"GK-{product.Slug.ToUpperInvariant()}-{request.ColorName.Trim().ToUpperInvariant()}-{request.Size.Trim().ToUpperInvariant()}";
         finalSku = System.Text.RegularExpressions.Regex.Replace(finalSku, @"[^a-zA-Z0-9_-]", "-");
 
         var skuExists = await _productVariantRepository.ExistsBySkuAsync(finalSku, cancellationToken);
@@ -111,7 +111,23 @@ public sealed class CreateProductVariantCommandHandler
 
         await _inventoryRepository.AddAsync(emptyInventory, cancellationToken);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+        {
+            var innerMsg = ex.InnerException?.Message ?? ex.Message;
+            if (innerMsg.Contains("23505") || innerMsg.Contains("duplicate key", StringComparison.OrdinalIgnoreCase))
+            {
+                if (innerMsg.Contains("sku", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.SkuAlreadyExists);
+                }
+                return Result.Failure<CreateProductVariantResponse>(ProductVariantErrors.DuplicateColorAndSize);
+            }
+            throw;
+        }
 
         return Result.Success(new CreateProductVariantResponse(variant.Variantid));
     }

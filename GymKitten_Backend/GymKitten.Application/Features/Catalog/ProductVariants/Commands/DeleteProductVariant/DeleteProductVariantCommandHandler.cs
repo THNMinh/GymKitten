@@ -39,7 +39,26 @@ public sealed class DeleteProductVariantCommandHandler
             return Result.Failure(ProductVariantErrors.NotFound);
         }
 
-        _productVariantRepository.Remove(variant);
+        // Check if variant has orders - prevent deletion if active order references exist
+        var hasOrders = await _productVariantRepository.HasOrdersAsync(variant.Variantid, cancellationToken);
+        if (hasOrders)
+        {
+            return Result.Failure(ProductVariantErrors.CannotDeleteWithOrders);
+        }
+
+        // Soft delete variant and release original SKU
+        var now = DateTime.UtcNow;
+        variant.Deletedat = now;
+        variant.Updatedat = now;
+        variant.Sku = $"{variant.Sku}__deleted_{now.Ticks}";
+
+        if (variant.Inventoryitem != null)
+        {
+            variant.Inventoryitem.Deletedat = now;
+            variant.Inventoryitem.Updatedat = now;
+        }
+
+        _productVariantRepository.Update(variant);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

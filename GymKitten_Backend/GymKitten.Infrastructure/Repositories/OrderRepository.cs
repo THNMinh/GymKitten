@@ -23,6 +23,7 @@ public sealed class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.Orderitems)
+            .Include(o => o.User)
             .FirstOrDefaultAsync(o => o.Orderid == orderId, cancellationToken);
     }
 

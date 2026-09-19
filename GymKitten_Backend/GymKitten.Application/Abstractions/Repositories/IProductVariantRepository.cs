@@ -19,6 +19,8 @@ public interface IProductVariantRepository
         Guid? excludeVariantId = null,
         CancellationToken cancellationToken = default);
 
+    Task<bool> HasOrdersAsync(Guid variantId, CancellationToken cancellationToken = default);
+
     Task AddAsync(Productvariant variant, CancellationToken cancellationToken = default);
 
     void Update(Productvariant variant);

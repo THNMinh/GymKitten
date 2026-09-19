@@ -71,5 +71,26 @@ public sealed class OrderStatusChangedEventHandler : INotificationHandler<OrderS
             notificationEvent.UserId,
             payload,
             cancellationToken);
+
+        // 3. Dispatch real-time OrderTrackingUpdated event to customer's user group
+        var trackingPayload = new
+        {
+            trackingId = notificationEvent.TrackingId ?? Guid.NewGuid(),
+            orderId = notificationEvent.OrderId,
+            orderCode = notificationEvent.OrderCode,
+            status = notificationEvent.NewStatus,
+            title = !string.IsNullOrWhiteSpace(notificationEvent.Title)
+                ? notificationEvent.Title
+                : $"Cập nhật đơn hàng #{notificationEvent.OrderCode}",
+            description = notificationEvent.Description ?? notificationEvent.StatusDescription,
+            location = notificationEvent.Location ?? "Warehouse / Distribution Hub",
+            timestamp = notificationEvent.Timestamp ?? DateTime.UtcNow,
+            updatedBy = notificationEvent.UpdatedBy ?? "Admin"
+        };
+
+        await _notificationHubService.SendOrderTrackingUpdatedAsync(
+            notificationEvent.UserId,
+            trackingPayload,
+            cancellationToken);
     }
 }

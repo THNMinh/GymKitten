@@ -17,6 +17,7 @@ public sealed class ProductVariantRepository : IProductVariantRepository
     {
         return await _context.Productvariants
             .Include(v => v.Product)
+            .Include(v => v.Inventoryitem)
             .FirstOrDefaultAsync(v => v.Variantid == variantId, cancellationToken);
     }
 
@@ -33,14 +34,18 @@ public sealed class ProductVariantRepository : IProductVariantRepository
 
     public async Task<bool> ExistsBySkuAsync(string sku, CancellationToken cancellationToken = default)
     {
+        var normSku = (sku ?? "").Trim().ToLower();
         return await _context.Productvariants
-            .AnyAsync(v => v.Sku == sku, cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(v => v.Sku.ToLower() == normSku, cancellationToken);
     }
 
     public async Task<bool> ExistsBySkuExcludingIdAsync(string sku, Guid variantId, CancellationToken cancellationToken = default)
     {
+        var normSku = (sku ?? "").Trim().ToLower();
         return await _context.Productvariants
-            .AnyAsync(v => v.Sku == sku && v.Variantid != variantId, cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(v => v.Variantid != variantId && v.Sku.ToLower() == normSku, cancellationToken);
     }
 
     public async Task<bool> ExistsByProductColorAndSizeAsync(
@@ -50,8 +55,8 @@ public sealed class ProductVariantRepository : IProductVariantRepository
         Guid? excludeVariantId = null,
         CancellationToken cancellationToken = default)
     {
-        var targetColor = colorName.Trim().ToLower();
-        var targetSize = size.Trim().ToLower();
+        var targetColor = (colorName ?? "").Trim().ToLower();
+        var targetSize = (size ?? "").Trim().ToLower();
 
         var query = _context.Productvariants
             .Where(v => v.Productid == productId &&
@@ -64,6 +69,12 @@ public sealed class ProductVariantRepository : IProductVariantRepository
         }
 
         return await query.AnyAsync(cancellationToken);
+    }
+
+    public async Task<bool> HasOrdersAsync(Guid variantId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Orderitems
+            .AnyAsync(oi => oi.Variantid == variantId, cancellationToken);
     }
 
     public async Task AddAsync(Productvariant variant, CancellationToken cancellationToken = default)

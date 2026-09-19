@@ -96,6 +96,8 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IOrderAutoCancelService, OrderAutoCancelService>();
+        services.AddScoped<IAutoExpireCouponsJob, AutoExpireCouponsJob>();
+        services.AddHostedService<JobSchedulerStartupService>();
 
         // VNPay Setup
         var vnpayConfig = configuration.GetSection("VNPAY");
@@ -117,30 +119,30 @@ public static class DependencyInjection
         services.AddHttpClient<IMomoService, MomoService>();
 
         // MinIO Settings & Client (Retained for fallback / local development, commented out in favor of Cloudinary)
-        // var minioSection = configuration.GetSection(MinioSettings.SectionName);
-        // services.Configure<MinioSettings>(minioSection);
+        var minioSection = configuration.GetSection(MinioSettings.SectionName);
+        services.Configure<MinioSettings>(minioSection);
 
-        // services.AddSingleton<IMinioClient>(sp =>
-        // {
-        //     var settings = sp.GetRequiredService<IOptions<MinioSettings>>().Value;
-        //     var client = new MinioClient()
-        //         .WithEndpoint(settings.Endpoint)
-        //         .WithCredentials(settings.AccessKey, settings.SecretKey);
+        services.AddSingleton<IMinioClient>(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<MinioSettings>>().Value;
+            var client = new MinioClient()
+                .WithEndpoint(settings.Endpoint)
+                .WithCredentials(settings.AccessKey, settings.SecretKey);
 
-        //     if (settings.UseSSL)
-        //     {
-        //         client = client.WithSSL();
-        //     }
+            if (settings.UseSSL)
+            {
+                client = client.WithSSL();
+            }
 
-        //     return client.Build();
-        // });
+            return client.Build();
+        });
 
-        // services.AddScoped<IStorageService, MinioStorageService>();
+        services.AddScoped<IStorageService, MinioStorageService>();
 
         // Cloudinary Settings & Storage Service
-        var cloudinarySection = configuration.GetSection(CloudinarySettings.SectionName);
-        services.Configure<CloudinarySettings>(cloudinarySection);
-        services.AddScoped<IStorageService, CloudinaryStorageService>();
+        //var cloudinarySection = configuration.GetSection(CloudinarySettings.SectionName);
+        //services.Configure<CloudinarySettings>(cloudinarySection);
+        //services.AddScoped<IStorageService, CloudinaryStorageService>();
 
         // JWT Settings
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName);
