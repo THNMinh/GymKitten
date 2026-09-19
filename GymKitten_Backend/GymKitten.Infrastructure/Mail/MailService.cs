@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using GymKitten.Application.Abstractions.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -87,19 +89,94 @@ public sealed class MailService : IMailService
 
     private async Task SendEmailInternalAsync(string toEmail, string subject, string htmlBody)
     {
+        // 1. If ApiKey is configured, send via HTTPS REST API (Port 443 - Never blocked on Render Free)
+        if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
+        {
+            var apiKey = _settings.ApiKey.Trim();
+            if (apiKey.StartsWith("re_", StringComparison.OrdinalIgnoreCase))
+            {
+                await SendViaResendApiAsync(apiKey, toEmail, subject, htmlBody);
+            }
+            else
+            {
+                await SendViaBrevoApiAsync(apiKey, toEmail, subject, htmlBody);
+            }
+            return;
+        }
+
+        // 2. Fallback to standard SMTP (Requires outbound ports 587/465 to be unblocked)
+        await SendViaSmtpAsync(toEmail, subject, htmlBody);
+    }
+
+    private async Task SendViaBrevoApiAsync(string apiKey, string toEmail, string subject, string htmlBody)
+    {
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
+
+        var fromEmail = (string.IsNullOrWhiteSpace(_settings.From) || _settings.From.Contains("gymkitten.com", StringComparison.OrdinalIgnoreCase))
+            ? (string.IsNullOrWhiteSpace(_settings.User) ? "mcpegunny@gmail.com" : _settings.User.Trim())
+            : _settings.From.Trim();
+
+        var payload = new
+        {
+            sender = new { name = _settings.DisplayName, email = fromEmail },
+            to = new[] { new { email = toEmail } },
+            subject,
+            htmlContent = htmlBody
+        };
+
+        var response = await httpClient.PostAsJsonAsync("https://api.brevo.com/v3/smtp/email", payload);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("[MAIL SERVICE BREVO] Failed to send email to {ToEmail}. Status: {Status}, Error: {Error}", toEmail, response.StatusCode, error);
+            throw new InvalidOperationException($"Brevo API failed ({response.StatusCode}): {error}");
+        }
+
+        _logger.LogInformation("[MAIL SERVICE BREVO] Successfully sent email to {ToEmail} via Brevo HTTP API", toEmail);
+    }
+
+    private async Task SendViaResendApiAsync(string apiKey, string toEmail, string subject, string htmlBody)
+    {
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        var fromAddress = (!string.IsNullOrWhiteSpace(_settings.From) && !_settings.From.Contains("gymkitten.com", StringComparison.OrdinalIgnoreCase))
+            ? $"{_settings.DisplayName} <{_settings.From.Trim()}>"
+            : $"{_settings.DisplayName} <onboarding@resend.dev>";
+
+        var payload = new
+        {
+            from = fromAddress,
+            to = new[] { toEmail },
+            subject,
+            html = htmlBody
+        };
+
+        var response = await httpClient.PostAsJsonAsync("https://api.resend.com/emails", payload);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("[MAIL SERVICE RESEND] Failed to send email to {ToEmail}. Status: {Status}, Error: {Error}", toEmail, response.StatusCode, error);
+            throw new InvalidOperationException($"Resend API failed ({response.StatusCode}): {error}");
+        }
+
+        _logger.LogInformation("[MAIL SERVICE RESEND] Successfully sent email to {ToEmail} via Resend HTTP API", toEmail);
+    }
+
+    private async Task SendViaSmtpAsync(string toEmail, string subject, string htmlBody)
+    {
         var smtpUser = _settings.User?.Trim();
         var smtpPassword = _settings.Password?.Replace(" ", "").Trim();
 
         if (string.IsNullOrWhiteSpace(smtpUser) || string.IsNullOrWhiteSpace(smtpPassword))
         {
-            _logger.LogWarning("[MAIL SERVICE] SMTP credentials not configured in appsettings. Email to {ToEmail} skipped. (Subject: {Subject})", toEmail, subject);
+            _logger.LogWarning("[MAIL SERVICE] SMTP credentials not configured. Email to {ToEmail} skipped.", toEmail);
             return;
         }
 
         try
         {
-            // Gmail SMTP requires the From address to match the authenticated user, or be an authorized alias.
-            // If From is empty or contains the default fake domain 'gymkitten.com', fallback to smtpUser.
             var fromEmail = (string.IsNullOrWhiteSpace(_settings.From) || _settings.From.Contains("gymkitten.com", StringComparison.OrdinalIgnoreCase))
                 ? smtpUser
                 : _settings.From.Trim();
@@ -113,6 +190,8 @@ public sealed class MailService : IMailService
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
+            client.Timeout = 10000; // 10s connection timeout so Hangfire doesn't hang for 8+ minutes on blocked ports
+
             var secureSocketOptions = _settings.EnableSsl
                 ? SecureSocketOptions.StartTls
                 : SecureSocketOptions.Auto;
@@ -127,7 +206,7 @@ public sealed class MailService : IMailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[MAIL SERVICE] Failed to send email to {ToEmail} via SMTP {Host}:{Port}", toEmail, _settings.SmtpHost, _settings.SmtpPort);
-            throw; // Rethrow to allow Hangfire to retry automatically
+            throw;
         }
     }
 }
