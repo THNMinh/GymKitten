@@ -29,16 +29,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("frontend", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:8080",
-                "http://localhost:8081",
-                "http://localhost:8082",
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://localhost:3000",
-                "https://localhost:3000",
-                "https://localhost:7191",
-                "http://localhost:5084")
+            .SetIsOriginAllowed(origin => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -99,12 +90,24 @@ var app = builder.Build();
 app.UseRequestContextLogging();
 app.UseSerilogRequestLogging();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger documentation UI in all environments
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GymKitten API v1");
+    c.RoutePrefix = "swagger";
+});
+
+// Root welcome & health status endpoint
+app.MapGet("/", () => Results.Ok(new
+{
+    service = "GymKitten API",
+    status = "Online",
+    version = "v1.0.0",
+    documentation = "/swagger",
+    hangfire = "/hangfire",
+    serverTime = DateTime.UtcNow
+}));
 
 app.UseExceptionHandler();
 
