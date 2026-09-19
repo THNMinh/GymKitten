@@ -194,17 +194,24 @@ public static class DependencyInjection
         services.AddSingleton<IOtpGenerator, OtpGenerator>();
 
         var redisConnectionString = configuration.GetConnectionString("Redis")
-            ?? configuration["Redis:ConnectionString"]
-            ?? "localhost:6379,abortConnect=false,connectTimeout=5000";
+            ?? configuration["Redis:ConnectionString"];
 
-        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        if (string.IsNullOrWhiteSpace(redisConnectionString) ||
+            redisConnectionString.Equals("inmemory", StringComparison.OrdinalIgnoreCase))
         {
-            var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
-            redisOptions.AbortOnConnectFail = false;
-            return ConnectionMultiplexer.Connect(redisOptions);
-        });
+            services.AddSingleton<IRedisOtpStore, InMemoryOtpStore>();
+        }
+        else
+        {
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+                redisOptions.AbortOnConnectFail = false;
+                return ConnectionMultiplexer.Connect(redisOptions);
+            });
 
-        services.AddSingleton<IRedisOtpStore, RedisOtpStore>();
+            services.AddSingleton<IRedisOtpStore, RedisOtpStore>();
+        }
 
         // Email & MailKit services
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
