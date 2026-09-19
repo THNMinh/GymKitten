@@ -11,7 +11,7 @@ namespace GymKitten.API.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("api/[controller]")]
+[Route("api/orders")]
 public class OrdersController : ControllerBase
 {
     private readonly ISender _sender;

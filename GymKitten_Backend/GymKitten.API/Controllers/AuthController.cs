@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymKitten.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly ISender _sender;

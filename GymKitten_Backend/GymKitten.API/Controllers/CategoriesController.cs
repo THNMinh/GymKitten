@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymKitten.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/categories")]
 public class CategoriesController : ControllerBase
 {
     private readonly ISender _sender;

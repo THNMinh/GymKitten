@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymKitten.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/checkout")]
 public class CheckoutController : ControllerBase
 {
     private readonly ISender _sender;
