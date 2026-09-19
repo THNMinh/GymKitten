@@ -40,10 +40,10 @@ public sealed class CreateUserCommandHandler
         CreateUserCommand request,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
-        {
-            return Result.Failure<AdminUserItemDto>(UserErrors.Forbidden);
-        }
+        //if (!string.Equals(_userContext.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+        //{
+        //    return Result.Failure<AdminUserItemDto>(UserErrors.Forbidden);
+        //}
 
         var normalizedRole = request.Role?.Trim();
         if (!string.Equals(normalizedRole, "Admin", StringComparison.OrdinalIgnoreCase) &&

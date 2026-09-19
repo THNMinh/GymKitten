@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymKitten.API.Controllers.Admin;
 
 [ApiController]
-[Authorize(Roles = "Admin,admin")]
+//[Authorize(Roles = "Admin,admin")]
 [Route("api/admin/users")]
 public class AdminUsersController : ControllerBase
 {
