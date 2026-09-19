@@ -118,31 +118,37 @@ public static class DependencyInjection
         services.Configure<MomoOptionModel>(momoSection);
         services.AddHttpClient<IMomoService, MomoService>();
 
-        // MinIO Settings & Client (Retained for fallback / local development, commented out in favor of Cloudinary)
-        var minioSection = configuration.GetSection(MinioSettings.SectionName);
-        services.Configure<MinioSettings>(minioSection);
-
-        services.AddSingleton<IMinioClient>(sp =>
+        // Storage Service (Cloudinary if CloudName configured, otherwise fallback to MinIO)
+        var cloudinaryCloudName = configuration["CloudinarySettings:CloudName"];
+        if (!string.IsNullOrWhiteSpace(cloudinaryCloudName))
         {
-            var settings = sp.GetRequiredService<IOptions<MinioSettings>>().Value;
-            var client = new MinioClient()
-                .WithEndpoint(settings.Endpoint)
-                .WithCredentials(settings.AccessKey, settings.SecretKey);
+            var cloudinarySection = configuration.GetSection(CloudinarySettings.SectionName);
+            services.Configure<CloudinarySettings>(cloudinarySection);
+            services.AddScoped<IStorageService, CloudinaryStorageService>();
+        }
+        else
+        {
+            // MinIO Settings & Client (Retained for fallback / local development)
+            var minioSection = configuration.GetSection(MinioSettings.SectionName);
+            services.Configure<MinioSettings>(minioSection);
 
-            if (settings.UseSSL)
+            services.AddSingleton<IMinioClient>(sp =>
             {
-                client = client.WithSSL();
-            }
+                var settings = sp.GetRequiredService<IOptions<MinioSettings>>().Value;
+                var client = new MinioClient()
+                    .WithEndpoint(settings.Endpoint)
+                    .WithCredentials(settings.AccessKey, settings.SecretKey);
 
-            return client.Build();
-        });
+                if (settings.UseSSL)
+                {
+                    client = client.WithSSL();
+                }
 
-        services.AddScoped<IStorageService, MinioStorageService>();
+                return client.Build();
+            });
 
-        // Cloudinary Settings & Storage Service
-        //var cloudinarySection = configuration.GetSection(CloudinarySettings.SectionName);
-        //services.Configure<CloudinarySettings>(cloudinarySection);
-        //services.AddScoped<IStorageService, CloudinaryStorageService>();
+            services.AddScoped<IStorageService, MinioStorageService>();
+        }
 
         // JWT Settings
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName);

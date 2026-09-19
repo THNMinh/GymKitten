@@ -28,6 +28,7 @@ public sealed class JwtProvider : IJwtProvider
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(JwtRegisteredClaimNames.Jti, jwtId),
             new(ClaimTypes.Role, user.Role),
+            new("role", user.Role),
             new("userId", user.Userid.ToString())
         };
 
