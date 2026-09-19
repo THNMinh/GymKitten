@@ -87,7 +87,10 @@ public sealed class MailService : IMailService
 
     private async Task SendEmailInternalAsync(string toEmail, string subject, string htmlBody)
     {
-        if (string.IsNullOrWhiteSpace(_settings.User) || string.IsNullOrWhiteSpace(_settings.Password))
+        var smtpUser = _settings.User?.Trim();
+        var smtpPassword = _settings.Password?.Replace(" ", "").Trim();
+
+        if (string.IsNullOrWhiteSpace(smtpUser) || string.IsNullOrWhiteSpace(smtpPassword))
         {
             _logger.LogWarning("[MAIL SERVICE] SMTP credentials not configured in appsettings. Email to {ToEmail} skipped. (Subject: {Subject})", toEmail, subject);
             return;
@@ -95,8 +98,14 @@ public sealed class MailService : IMailService
 
         try
         {
+            // Gmail SMTP requires the From address to match the authenticated user, or be an authorized alias.
+            // If From is empty or contains the default fake domain 'gymkitten.com', fallback to smtpUser.
+            var fromEmail = (string.IsNullOrWhiteSpace(_settings.From) || _settings.From.Contains("gymkitten.com", StringComparison.OrdinalIgnoreCase))
+                ? smtpUser
+                : _settings.From.Trim();
+
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(_settings.DisplayName, _settings.From));
+            message.From.Add(new MailboxAddress(_settings.DisplayName, fromEmail));
             message.To.Add(new MailboxAddress(toEmail, toEmail));
             message.Subject = subject;
 
@@ -109,7 +118,7 @@ public sealed class MailService : IMailService
                 : SecureSocketOptions.Auto;
 
             await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, secureSocketOptions);
-            await client.AuthenticateAsync(_settings.User, _settings.Password);
+            await client.AuthenticateAsync(smtpUser, smtpPassword);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
 
