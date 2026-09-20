@@ -39,7 +39,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal Server Error",
-                "An unexpected error occurred. Please try again later.")
+                $"{exception.GetType().Name}: {exception.Message}{(exception.InnerException != null ? " | Inner: " + exception.InnerException.Message : "")}")
         };
 
         var problemDetails = new ProblemDetails
