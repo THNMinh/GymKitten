@@ -199,7 +199,8 @@ public sealed class CheckoutCommandHandler
             }
         }
 
-        decimal finalTotalAmount = Math.Max(0, subtotal - discountAmount);
+        decimal shippingFee = request.ShippingFee ?? (subtotal >= 1200000m || subtotal == 0 ? 0 : 35000m);
+        decimal finalTotalAmount = Math.Max(0, subtotal - discountAmount + shippingFee);
         var paymentMethodUpper = request.PaymentMethod.Trim().ToUpper();
 
         var order = new Domain.Entities.Order
@@ -209,7 +210,7 @@ public sealed class CheckoutCommandHandler
             Userid = _userContext.UserId,
             Shippingaddress = request.ShippingAddress,
             Subtotal = subtotal,
-            Shippingfee = 0,
+            Shippingfee = shippingFee,
             Discountamount = discountAmount,
             Totalamount = finalTotalAmount,
             Currentstatus = "Pending",

@@ -8,4 +8,5 @@ public sealed record CheckoutCommand(
     string ShippingAddress,
     string PaymentMethod,
     string? CustomerNote = null,
-    string? CouponCode = null) : ICommand<Result<CheckoutCommandResponse>>;
+    string? CouponCode = null,
+    decimal? ShippingFee = null) : ICommand<Result<CheckoutCommandResponse>>;

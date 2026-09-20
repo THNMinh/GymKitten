@@ -70,12 +70,23 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("momo-return")]
-    public IResult ProcessMomoReturn(
+    public async Task<IResult> ProcessMomoReturn(
         [FromQuery] string orderId,
         [FromQuery] int resultCode,
-        [FromQuery] string message,
-        [FromQuery] long? amount)
+        [FromQuery] string? message,
+        [FromQuery] long? amount,
+        [FromQuery] long? transId,
+        CancellationToken cancellationToken = default)
     {
+        var command = new GymKitten.Application.Features.Payment.Commands.ProcessMomoReturn.ProcessMomoReturnCommand(
+            orderId,
+            resultCode,
+            message,
+            amount,
+            transId);
+
+        await _sender.Send(command, cancellationToken);
+
         var isSuccess = resultCode == 0;
         var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:8081";
 
