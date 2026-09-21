@@ -35,7 +35,9 @@ public sealed class GetProductByIdQueryHandler
                 img.Variantid,
                 img.Imageurl,
                 img.Displayorder,
-                img.Isprimary))
+                img.Isprimary,
+                img.Variant?.Colorname,
+                img.Variant?.Colorhex))
             .ToList();
 
         var variantDtos = product.Productvariants

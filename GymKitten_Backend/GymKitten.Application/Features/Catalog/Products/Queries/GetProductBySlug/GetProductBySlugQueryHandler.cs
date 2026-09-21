@@ -41,7 +41,9 @@ public sealed class GetProductBySlugQueryHandler
                 img.Variantid,
                 img.Imageurl,
                 img.Displayorder,
-                img.Isprimary))
+                img.Isprimary,
+                img.Variant?.Colorname,
+                img.Variant?.Colorhex))
             .ToList();
 
         var variants = product.Productvariants

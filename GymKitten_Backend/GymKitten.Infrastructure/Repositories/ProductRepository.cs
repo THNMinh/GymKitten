@@ -31,6 +31,7 @@ public sealed class ProductRepository : IProductRepository
         return await _context.Products
             .AsNoTracking()
             .Include(p => p.Productimages)
+                .ThenInclude(img => img.Variant)
             .Include(p => p.Productvariants)
                 .ThenInclude(v => v.Inventoryitem)
             .Include(p => p.Productreviews)
@@ -42,6 +43,7 @@ public sealed class ProductRepository : IProductRepository
         return await _context.Products
             .AsNoTracking()
             .Include(p => p.Productimages)
+                .ThenInclude(img => img.Variant)
             .Include(p => p.Productvariants)
                 .ThenInclude(v => v.Inventoryitem)
             .Include(p => p.Productreviews)

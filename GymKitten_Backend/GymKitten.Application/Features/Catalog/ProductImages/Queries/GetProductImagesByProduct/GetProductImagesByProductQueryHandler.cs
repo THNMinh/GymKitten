@@ -34,7 +34,9 @@ public sealed class GetProductImagesByProductQueryHandler
             img.Variantid,
             img.Imageurl,
             img.Displayorder,
-            img.Isprimary)).ToList();
+            img.Isprimary,
+            img.Variant?.Colorname,
+            img.Variant?.Colorhex)).ToList();
 
         return Result.Success(dtos);
     }

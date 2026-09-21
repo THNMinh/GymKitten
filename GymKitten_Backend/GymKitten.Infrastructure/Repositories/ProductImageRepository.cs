@@ -28,6 +28,7 @@ public sealed class ProductImageRepository : IProductImageRepository
     public async Task<List<Productimage>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default)
     {
         return await _context.Productimages
+            .Include(i => i.Variant)
             .Where(i => i.Productid == productId)
             .OrderBy(i => i.Displayorder)
             .ToListAsync(cancellationToken);

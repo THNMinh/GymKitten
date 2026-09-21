@@ -6,7 +6,9 @@ public record ProductImageDto(
     Guid? VariantId,
     string ImageUrl,
     int DisplayOrder,
-    bool IsPrimary);
+    bool IsPrimary,
+    string? ColorName = null,
+    string? ColorHex = null);
 
 public sealed record UploadProductImagesResponse(
     Guid ProductId,
